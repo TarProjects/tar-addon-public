@@ -1,0 +1,15 @@
+{
+  "required": true,
+  "package": "org.tarclient.addon.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "client": [
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  },
+  "mixins": [
+    "ItemStackMixin",
+    "LivingEntityMixin",
+    "RotationsMixin"
+  ]
+}

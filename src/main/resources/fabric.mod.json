@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "id": "tar-addon",
+  "version": "${version}",
+  "name": "Tar-Client addon",
+  "description": "Utility addon designed for crystal pvp",
+  "authors": [
+    "DebugBoard",
+    "Mostly Nullable"
+  ],
+  "icon": "assets/template/icon.png",
+  "environment": "client",
+  "entrypoints": {
+    "meteor": [
+      "org.tarclient.addon.TarAddon"
+    ]
+  },
+  "mixins": [
+    "tar-addon.mixins.json"
+  ],
+  "custom": {
+    "meteor-client:color": "225,25,25"
+  },
+  "depends": {
+    "java": ">=21",
+    "minecraft": [
+      "${mc_version}"
+    ],
+    "meteor-client": "*"
+  }
+}

@@ -16,7 +16,7 @@ import meteordevelopment.meteorclient.settings.*;
 import meteordevelopment.meteorclient.utils.Utils;
 import meteordevelopment.meteorclient.utils.misc.MeteorStarscript;
 import meteordevelopment.orbit.EventHandler;
-import meteordevelopment.starscript.Script;
+import org.meteordev.starscript.Script;
 import net.minecraft.util.Util;
 import org.tarclient.addon.TarAddon;
 import org.tarclient.addon.TarModule;

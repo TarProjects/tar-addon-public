@@ -1,7 +1,7 @@
 package org.tarclient.addon.modules;
 
 import meteordevelopment.meteorclient.events.entity.player.PlayerMoveEvent;
-import meteordevelopment.meteorclient.events.meteor.MouseButtonEvent;
+import meteordevelopment.meteorclient.events.meteor.MouseClickEvent;
 import meteordevelopment.meteorclient.events.packets.PacketEvent;
 import meteordevelopment.meteorclient.events.world.TickEvent;
 import meteordevelopment.meteorclient.mixin.PlayerMoveC2SPacketAccessor;
@@ -81,7 +81,7 @@ public class PhaseFix extends TarModule {
     int delay = 0;
 
     public PhaseFix() {
-        super(TarAddon.CATEGORY, "phase-fix", "Fixes some issues regarding phase.");
+        super(TarAddon.CATEGORY, "phase-fix", "Fixes some issues regarding phase. For testing only!");
     }
 
     @Override
@@ -90,8 +90,8 @@ public class PhaseFix extends TarModule {
     }
 
     @EventHandler
-    private void onMouseButton(MouseButtonEvent event) {
-        if (event.action == KeyAction.Press && match(clipBind.get(), Keybind.fromButton(event.button)) && Utils.canUpdate()) {
+    private void onMouseButton(MouseClickEvent event) {
+        if (event.action == KeyAction.Press && match(clipBind.get(), Keybind.fromButton(event.button())) && Utils.canUpdate()) {
             // So goofy omfg
             delay = delaySet.get();
         }
@@ -156,7 +156,7 @@ public class PhaseFix extends TarModule {
         if (!Utils.canUpdate() || isNotSurvival()) return;
 
         if (event.packet instanceof PlayerMoveC2SPacket && burrowedObsidian()) {
-            ((PlayerMoveC2SPacketAccessor) event.packet).setOnGround(onground.get());
+            ((PlayerMoveC2SPacketAccessor) event.packet).meteor$setOnGround(onground.get());
         }
     }
 

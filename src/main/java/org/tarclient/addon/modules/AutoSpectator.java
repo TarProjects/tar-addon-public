@@ -45,7 +45,7 @@ public class AutoSpectator extends TarModule {
     String winner;
 
     public AutoSpectator() {
-        super(TarAddon.CATEGORY, "auto-spectator", "Crystalpvp.cc spectator exploit. Tweak delay if needed. This module will trigger when someone exits a duel");
+        super(TarAddon.CATEGORY, "auto-spectator", "Crystalpvp.cc spectator exploit. Use less delay if you dont get spectator, and more delay if the duel already ended. This module will trigger when someone exits a duel");
     }
 
     @Override

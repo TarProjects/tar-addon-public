@@ -21,7 +21,7 @@ public class RotationsMixin {
 
     @Inject(method = "onSendMovementPacketsPre", at = @At("HEAD"), remap = false)
     private static void onSendMovementPacketsPre(SendMovementPacketsEvent.Pre event, CallbackInfo ci) {
-        if (mc.cameraEntity == mc.player && mc.player != null) {
+        if (mc.getCameraEntity() == mc.player && mc.player != null) {
             serverYaw = mc.player.getYaw();
             serverPitch = mc.player.getPitch();
         }

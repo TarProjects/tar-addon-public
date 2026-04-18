@@ -32,14 +32,14 @@ public class AutoKit extends TarModule {
     );
 
     private final Setting<List<Item>> xcarry = sgGeneral.add(new ItemListSetting.Builder()
-        .name("items")
-        .description("Which items to put in xcarry. Leave empty if you don't want to use this")
+        .name("x-carry")
+        .description("Which items to put in X-Carry. Leave empty if you don't want to use this")
         .build()
     );
 
     private final Setting<Integer> delay = sgGeneral.add(new IntSetting.Builder()
         .name("delay")
-        .description("When to trigger XCarry")
+        .description("When to trigger X-Carry")
         .defaultValue(20)
         .sliderRange(0, 20)
         .visible(() -> !xcarry.get().isEmpty())

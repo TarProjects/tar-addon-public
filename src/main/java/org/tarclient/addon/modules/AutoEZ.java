@@ -22,6 +22,7 @@ public class AutoEZ extends TarModule {
     private final Setting<String> ezmessage = sgGeneral.add(new StringSetting.Builder()
         .name("auto-ez-message")
         .description("What message to send. {username} will be replaced with the \"loser's\" username")
+        .defaultValue("ggs {username}")
         .build()
     );
 
@@ -57,7 +58,7 @@ public class AutoEZ extends TarModule {
             String killer = matcher.group(3);
             int eloDeath = Integer.parseInt(matcher.group(2));
             // int eloKiller = Integer.parseInt(matcher.group(4));
-            if (Objects.equals(killer, mc.getNetworkHandler().getProfile().getName()) && eloDeath > elocap.get()) {
+            if (Objects.equals(killer, mc.getNetworkHandler().getProfile().name()) && eloDeath > elocap.get()) {
                 ChatUtils.sendPlayerMsg(ezmessage.get().replaceAll("(?i)\\{username}", death));
             }
         }

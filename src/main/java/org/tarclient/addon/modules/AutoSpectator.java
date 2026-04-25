@@ -52,7 +52,7 @@ public class AutoSpectator extends TarModule {
     private final Setting<Integer> messagedelay = sgGeneral.add(new IntSetting.Builder()
         .name("message-delay")
         .description("When to actually send the messages")
-        .defaultValue(6)
+        .defaultValue(10)
         .sliderRange(0, 120)
         .build()
     );
@@ -98,6 +98,7 @@ public class AutoSpectator extends TarModule {
     @EventHandler
     private void onTick(TickEvent.Pre event) {
         if (!Utils.canUpdate()) {
+            if (stage != Stage.WaitForMessage) counter++; // tick inconsistencies while loading
             return;
         }
         if (stage == Stage.Delay) {

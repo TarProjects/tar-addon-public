@@ -2,6 +2,7 @@ package org.tarclient.addon;
 
 import meteordevelopment.meteorclient.addons.GithubRepo;
 import meteordevelopment.meteorclient.addons.MeteorAddon;
+import meteordevelopment.meteorclient.commands.Commands;
 import meteordevelopment.meteorclient.systems.modules.Category;
 import meteordevelopment.meteorclient.systems.modules.Modules;
 import meteordevelopment.meteorclient.utils.PreInit;
@@ -11,6 +12,7 @@ import org.meteordev.starscript.value.Value;
 import org.meteordev.starscript.value.ValueMap;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.PlayerEntity;
+import org.tarclient.addon.commands.TPCommand;
 import org.tarclient.addon.modules.*;
 
 import static meteordevelopment.meteorclient.MeteorClient.mc;
@@ -51,6 +53,8 @@ public class TarAddon extends MeteorAddon {
     // TODO: remove all Utils.canUpdate since events arent called if player is null anyways.... stupid me
     @Override
     public void onInitialize() {
+        Modules.get().add(new AntiPearl());
+        Modules.get().add(new AutoDuelAccept());
         Modules.get().add(new AutoEZ());
         Modules.get().add(new AutoKit());
         Modules.get().add(new AutoSpectator());
@@ -58,10 +62,14 @@ public class TarAddon extends MeteorAddon {
         Modules.get().add(new PearlPhase());
         Modules.get().add(new SelfFill());
         Modules.get().add(new PhaseFix());
+        Modules.get().add(new RegearBot());
         Modules.get().add(new CornerClip());
+        Modules.get().add(new InventoryFixes());
         Modules.get().add(new ChorusESP());
         Modules.get().add(new ChinaExploit());
+        Modules.get().add(new TestFly());
 
+        Commands.add(new TPCommand());
     }
 
     @Override

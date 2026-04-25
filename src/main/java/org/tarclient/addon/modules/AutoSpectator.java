@@ -5,11 +5,13 @@ import meteordevelopment.meteorclient.events.world.TickEvent;
 import meteordevelopment.meteorclient.settings.*;
 import meteordevelopment.meteorclient.systems.modules.Modules;
 import meteordevelopment.meteorclient.utils.Utils;
+import meteordevelopment.meteorclient.utils.player.ChatUtils;
 import meteordevelopment.orbit.EventHandler;
 import net.minecraft.world.GameMode;
 import org.tarclient.addon.TarAddon;
 import org.tarclient.addon.TarModule;
 
+import java.util.List;
 import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -40,6 +42,21 @@ public class AutoSpectator extends TarModule {
         .build()
     );
 
+    private final Setting<List<String>> messages = sgGeneral.add(new StringListSetting.Builder()
+        .name("messages")
+        .description("Send messages after specating")
+        .defaultValue("")
+        .build()
+    );
+
+    private final Setting<Integer> messagedelay = sgGeneral.add(new IntSetting.Builder()
+        .name("message-delay")
+        .description("When to actually send the messages")
+        .defaultValue(6)
+        .sliderRange(0, 120)
+        .build()
+    );
+
     Stage stage;
     int counter;
     String winner;
@@ -55,6 +72,9 @@ public class AutoSpectator extends TarModule {
         winner = "";
     }
 
+    private static final String regex = "^\\[Duels] (\\w+) \\(\\d+\\) \\(\\+\\d+\\) has defeated (\\w+) \\(\\d+\\) \\(-\\d+\\)";
+
+
     @EventHandler
     private void onMessageReceive(ReceiveMessageEvent event) {
         if (!Utils.canUpdate() || stage != Stage.WaitForMessage) {
@@ -64,7 +84,6 @@ public class AutoSpectator extends TarModule {
 
 
         // Matches for duel end messages
-        String regex = "^\\[Duels] (\\w+) \\(\\d+\\) \\(\\+\\d+\\) has defeated (\\w+) \\(\\d+\\) \\(-\\d+\\)";
         Pattern pattern = Pattern.compile(regex);
         Matcher matcher = pattern.matcher(message);
 
@@ -92,22 +111,48 @@ public class AutoSpectator extends TarModule {
             }
             if (counter >= delay.get()) {
                 if (mc.player.getY() >= 120 && mc.interactionManager.getCurrentGameMode() == GameMode.SURVIVAL) {
-                    info("Spectating!");
-                    mc.getNetworkHandler().sendChatCommand("spectate " + winner);
                     if (disableAutoKit.get()) {
                         AutoKit autoKit = Modules.get().get(AutoKit.class);
                         if (autoKit.isActive()) {
                             autoKit.toggle();
                         }
                     }
+                    info("Spectating!");
+                    mc.getNetworkHandler().sendChatCommand("spectate " + winner);
+
+                    if (messages.get().isEmpty()) {
+                        onActivate();
+                        return;
+                    }
+
+                    counter = 0;
+                    stage = Stage.Messages;
+
+                } else {
+                    onActivate();
                 }
-                onActivate();
             }
+        }
+
+        // messy but works ig
+        if (stage == Stage.Messages) {
+            if (counter >= messagedelay.get()) {
+                // post
+                for (String message : messages.get()) {
+                    if (message.isEmpty()) continue;
+                    ChatUtils.sendPlayerMsg(message);
+                }
+
+                onActivate();
+                return;
+            }
+            counter++;
         }
     }
 
     enum Stage {
         WaitForMessage,
         Delay,
+        Messages,
     }
 }

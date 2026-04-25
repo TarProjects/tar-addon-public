@@ -32,7 +32,7 @@ public class RegearBot extends TarModule {
     private final Setting<List<String>> usernames = sgGeneral.add(new StringListSetting.Builder()
         .name("usernames")
         .description("Authorized users")
-        .defaultValue("")
+        .defaultValue("CrystalEU")
         .build()
     );
 
@@ -52,11 +52,10 @@ public class RegearBot extends TarModule {
         .build()
     );
 
-    private final Setting<Integer> batch = sgGeneral.add(new IntSetting.Builder()
-        .name("batch")
-        .description("How many items to drop at a time")
-        .defaultValue(1)
-        .sliderRange(0, 3)
+    private final Setting<Boolean> dropArmor = sgGeneral.add(new BoolSetting.Builder()
+        .name("drop-armor")
+        .description("Drop armor before killing. NOTE: takes more time!")
+        .defaultValue(false)
         .build()
     );
 
@@ -65,6 +64,7 @@ public class RegearBot extends TarModule {
         .description("This tells how many ticks have to happen before each batch")
         .defaultValue(2)
         .sliderRange(0, 4)
+        .visible(dropArmor::get)
         .build()
     );
 
@@ -117,12 +117,6 @@ public class RegearBot extends TarModule {
         }
 
         if (stage == Stage.Pot) {
-            if (counter >= 5) {
-                stage = Stage.DropArmor;
-                counter = 0;
-                return;
-            }
-
             FindItemResult item = InvUtils.findInHotbar(Items.SPLASH_POTION);
 
             if (item.found()) {
@@ -132,15 +126,16 @@ public class RegearBot extends TarModule {
                 sendPacket(new PlayerInteractItemC2SPacket(Hand.MAIN_HAND, 0, mc.player.getYaw(), 90));
 
                 InvUtils.swapBack();
+            } else {
+                stage = Stage.DropArmor;
+                counter = 0;
             }
-
-            counter++;
             return;
         }
 
 
         if (stage == Stage.DropArmor) {
-            if (counter >= 4 * modulo.get()) {
+            if (!dropArmor.get() || counter >= 4 * modulo.get()) { // either done dropping or not gonna drop armor
                 counter = 0;
                 if (activateChinaExploit.get()) {
                     stage = Stage.ChinaExploit;

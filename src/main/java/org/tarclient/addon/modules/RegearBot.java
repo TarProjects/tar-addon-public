@@ -5,22 +5,21 @@ import meteordevelopment.meteorclient.events.world.TickEvent;
 import meteordevelopment.meteorclient.settings.*;
 import meteordevelopment.meteorclient.systems.modules.Modules;
 import meteordevelopment.meteorclient.utils.Utils;
-import meteordevelopment.meteorclient.utils.player.FindItemResult;
 import meteordevelopment.meteorclient.utils.player.InvUtils;
 import meteordevelopment.meteorclient.utils.player.SlotUtils;
 import meteordevelopment.orbit.EventHandler;
 import net.minecraft.client.network.PlayerListEntry;
-import net.minecraft.component.type.AttributeModifierSlot;
-import net.minecraft.entity.EquipmentSlot;
+import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
 import net.minecraft.network.packet.c2s.play.PlayerInteractItemC2SPacket;
-import net.minecraft.network.packet.c2s.play.PlayerMoveC2SPacket;
 import net.minecraft.network.packet.c2s.play.SpectatorTeleportC2SPacket;
 import net.minecraft.util.Hand;
 import net.minecraft.world.GameMode;
 import org.tarclient.addon.TarAddon;
 import org.tarclient.addon.TarModule;
+import org.tarclient.addon.utils.TarInvUtils;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.regex.Matcher;
@@ -46,9 +45,9 @@ public class RegearBot extends TarModule {
 
     private final Setting<Integer> delay = sgGeneral.add(new IntSetting.Builder()
         .name("drop-delay")
-        .description("How many ticks to wait before dropping gear")
-        .defaultValue(10)
-        .sliderRange(0, 120)
+        .description("How many ticks to wait")
+        .defaultValue(1)
+        .sliderRange(0, 10)
         .build()
     );
 
@@ -96,10 +95,13 @@ public class RegearBot extends TarModule {
 
     Stage stage = Stage.None;
     int counter = 0;
+    final List<Integer> thrown = new ArrayList<>();
 
     @Override
     public void onActivate() {
         stage = Stage.None;
+        counter = 0;
+        thrown.clear();
     }
 
     @EventHandler
@@ -110,27 +112,39 @@ public class RegearBot extends TarModule {
             if (counter >= delay.get()) {
                 stage = Stage.Pot;
                 counter = 0;
+            } else {
+                counter++;
                 return;
             }
-            counter++;
-            return;
         }
 
         if (stage == Stage.Pot) {
-            FindItemResult item = InvUtils.findInHotbar(Items.SPLASH_POTION);
+            // "complex" logic to not accidentally throw same pot on high ping
+            ArrayList<Integer> items = TarInvUtils.findInHotbar(itemStack -> itemStack.getItem() == Items.SPLASH_POTION);
+            int slot = -1;
 
-            if (item.found()) {
-                InvUtils.swap(item.slot(), true);
+            for (Integer item : items) {
+                if (!thrown.contains(item)) {
+                    slot = item;
+                    break;
+                }
+            }
+            if (slot != -1) {
+                thrown.add(slot); // no duplicate throw
+                InvUtils.swap(slot, true);
 
-                sendPacket(new PlayerMoveC2SPacket.LookAndOnGround(mc.player.getYaw(), 90, mc.player.isOnGround(), mc.player.horizontalCollision));
-                sendPacket(new PlayerInteractItemC2SPacket(Hand.MAIN_HAND, 0, mc.player.getYaw(), 90));
+                Hand hand = Hand.MAIN_HAND;
+                if (slot == SlotUtils.OFFHAND) hand = Hand.OFF_HAND;
+
+                sendPacket(new PlayerInteractItemC2SPacket(hand, 0, mc.player.getYaw(), -90));
 
                 InvUtils.swapBack();
+                return;
             } else {
                 stage = Stage.DropArmor;
                 counter = 0;
+                thrown.clear();
             }
-            return;
         }
 
 

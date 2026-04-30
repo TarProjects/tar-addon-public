@@ -15,3 +15,5 @@ You can even exit spectator by doing /kit above the Y threshold which is around 
 There is a second way to exit spectator, which is by moving and teleporting to a person in a duel using the spectator hotbar. For some reason, this sets you into survival ANYWHERE (including below the ground, in phase etc.)
 
 Probably will be patched soon, use it while you can
+
+EDIT 1: works as of 30/04/2026, using /kitcreator when you get sent to spawn (just before getting in spec) will set you into spectator in kitcreator

@@ -27,6 +27,8 @@ import java.util.regex.Pattern;
 
 public class RegearBot extends TarModule {
     private final SettingGroup sgGeneral = this.settings.getDefaultGroup();
+    private final SettingGroup sgConfig = this.settings.createGroup("Config");
+
 
     private final Setting<List<String>> usernames = sgGeneral.add(new StringListSetting.Builder()
         .name("usernames")
@@ -34,7 +36,6 @@ public class RegearBot extends TarModule {
         .defaultValue("CrystalEU")
         .build()
     );
-
 
     private final Setting<String> regearCommand = sgGeneral.add(new StringSetting.Builder()
         .name("regear-command")
@@ -44,21 +45,39 @@ public class RegearBot extends TarModule {
     );
 
     private final Setting<Integer> delay = sgGeneral.add(new IntSetting.Builder()
-        .name("drop-delay")
-        .description("How many ticks to wait")
+        .name("delay")
+        .description("How many ticks to wait after spectating")
         .defaultValue(1)
         .sliderRange(0, 10)
         .build()
     );
 
-    private final Setting<Boolean> dropArmor = sgGeneral.add(new BoolSetting.Builder()
+
+    /* --- CONFIG --- */
+    private final Setting<Boolean> usePotions = sgConfig.add(new BoolSetting.Builder()
+        .name("use-potions")
+        .description("Uses potions")
+        .defaultValue(false)
+        .build()
+    );
+
+    private final Setting<Integer> potionAmount = sgConfig.add(new IntSetting.Builder()
+        .name("potion-amount")
+        .description("How many potions to drop each tick")
+        .defaultValue(3)
+        .sliderRange(0, 10)
+        .visible(usePotions::get)
+        .build()
+    );
+
+    private final Setting<Boolean> dropArmor = sgConfig.add(new BoolSetting.Builder()
         .name("drop-armor")
         .description("Drop armor before killing. NOTE: takes more time!")
         .defaultValue(false)
         .build()
     );
 
-    private final Setting<Integer> modulo = sgGeneral.add(new IntSetting.Builder()
+    private final Setting<Integer> modulo = sgConfig.add(new IntSetting.Builder()
         .name("modulo")
         .description("This tells how many ticks have to happen before each batch")
         .defaultValue(2)
@@ -67,14 +86,14 @@ public class RegearBot extends TarModule {
         .build()
     );
 
-    private final Setting<Boolean> activateChinaExploit = sgGeneral.add(new BoolSetting.Builder()
+    private final Setting<Boolean> activateChinaExploit = sgConfig.add(new BoolSetting.Builder()
         .name("activate-china-exploit")
         .description("This module will automatically re-spectate.")
         .defaultValue(true)
         .build()
     );
 
-    private final Setting<Integer> chinaExploitDelay = sgGeneral.add(new IntSetting.Builder()
+    private final Setting<Integer> chinaExploitDelay = sgConfig.add(new IntSetting.Builder()
         .name("china-exploit-delay")
         .description("When to enable China Exploit")
         .defaultValue(90)
@@ -82,9 +101,6 @@ public class RegearBot extends TarModule {
         .visible(activateChinaExploit::get)
         .build()
     );
-
-
-
 
     private static final String whisperRegex = "^(\\w+) says: (.+)";
 
@@ -127,18 +143,27 @@ public class RegearBot extends TarModule {
     }
 
     private void tickPot() {
-        int slot = findThrowable();
-
-        if (slot != -1) { // item exists in hotbar
-            thrown.add(slot); // no duplicate throw
-            throwPot(slot);
+        if (!usePotions.get()) {
+            stage = Stage.DropArmor;
+            counter = 0;
+            thrown.clear();
             return;
         }
 
-        // slot wasn't found
-        stage = Stage.DropArmor;
-        counter = 0;
-        thrown.clear();
+
+        for (int i = 0; i < potionAmount.get(); i++) {
+            int slot = findThrowable();
+
+            if (slot != -1) { // item exists in hotbar
+                throwPot(slot);
+                thrown.add(slot); // no duplicate throw
+            } else {
+                // slot wasn't found
+                stage = Stage.DropArmor;
+                counter = 0;
+                thrown.clear();
+            }
+        }
     }
 
     private int findThrowable() {
@@ -163,14 +188,11 @@ public class RegearBot extends TarModule {
     private void tickDropArmor() {
         if (!dropArmor.get() || counter >= 4 * modulo.get()) { // either done dropping or not gonna drop armor
             counter = 0;
-            if (activateChinaExploit.get()) {
-                stage = Stage.ChinaExploit;
-            } else {
-                stage = Stage.None;
-            }
+            stage = Stage.ChinaExploit;
             mc.getNetworkHandler().sendChatCommand("kill");
             return;
         }
+
         if (counter % modulo.get() != 0) {
             // skip ticks
             counter++;
@@ -181,6 +203,11 @@ public class RegearBot extends TarModule {
     }
 
     private void tickChinaExploit() {
+        if (!activateChinaExploit.get()) {
+            stage = Stage.None;
+            counter = 0;
+        }
+
         if (counter >= chinaExploitDelay.get()) {
             stage = Stage.None;
             counter = 0;

@@ -1,15 +1,12 @@
 package org.tarclient.addon.modules;
 
 import meteordevelopment.meteorclient.events.entity.player.PlayerMoveEvent;
-import meteordevelopment.meteorclient.events.meteor.MouseClickEvent;
 import meteordevelopment.meteorclient.events.packets.PacketEvent;
 import meteordevelopment.meteorclient.events.world.TickEvent;
 import meteordevelopment.meteorclient.mixin.PlayerMoveC2SPacketAccessor;
 import meteordevelopment.meteorclient.mixininterface.IVec3d;
 import meteordevelopment.meteorclient.settings.*;
 import meteordevelopment.meteorclient.utils.Utils;
-import meteordevelopment.meteorclient.utils.misc.Keybind;
-import meteordevelopment.meteorclient.utils.misc.input.KeyAction;
 import meteordevelopment.meteorclient.utils.player.PlayerUtils;
 import meteordevelopment.orbit.EventHandler;
 import net.minecraft.network.packet.c2s.play.PlayerMoveC2SPacket;
@@ -26,63 +23,59 @@ public class PhaseFix extends TarModule {
     private final SettingGroup sgGeneral = this.settings.getDefaultGroup();
 
 
-    private final Setting<Boolean> onground = sgGeneral.add(new BoolSetting.Builder()
+    private final Setting<Boolean> onGround = sgGeneral.add(new BoolSetting.Builder()
         .name("on-ground")
         .description("Spoofs on-ground value. Set this to whichever you want the onground value to be.")
         .defaultValue(true)
         .build()
     );
 
-    private final Setting<Boolean> slowdown = sgGeneral.add(new BoolSetting.Builder()
-        .name("slow-down")
-        .description("Slows you down inside blocks")
+    private final Setting<Boolean> fly = sgGeneral.add(new BoolSetting.Builder()
+        .name("fly")
+        .description("Flies inside blocks")
         .defaultValue(true)
         .build()
     );
 
-    private final Setting<Double> slowspeed = sgGeneral.add(new DoubleSetting.Builder()
-        .name("slow-speed")
-        .description("Speed which you go when slowed.")
-        .defaultValue(10)
-        .sliderRange(-10, 10)
-        .visible(slowdown::get)
+    private final Setting<Double> flySpeed = sgGeneral.add(new DoubleSetting.Builder()
+        .name("fly-speed")
+        .description("The speed that you fly at")
+        .defaultValue(0.03)
+        .sliderRange(0, 10)
+        .visible(fly::get)
         .build()
     );
 
-    private final Setting<Boolean> vclip = sgGeneral.add(new BoolSetting.Builder()
-        .name("vclip")
+    private final Setting<Boolean> wiggle = sgGeneral.add(new BoolSetting.Builder()
+        .name("wiggle")
+        .description("Wiggles you if you dont move")
+        .defaultValue(true)
+        .visible(fly::get)
+        .build()
+    );
+
+    private final Setting<Boolean> vClipJump = sgGeneral.add(new BoolSetting.Builder()
+        .name("v-clip-jump")
         .description("VClips when jumping inside phase.")
         .defaultValue(true)
         .build()
     );
 
-    private final Setting<Boolean> packet = sgGeneral.add(new BoolSetting.Builder()
-        .name("packet")
-        .description("Sends extra packet on vclip")
-        .defaultValue(true)
-        .build()
-    );
-
-    private final Setting<Keybind> clipBind = sgGeneral.add(new KeybindSetting.Builder()
-        .name("vclip-bind")
-        .description("Alternative bind to vclipping")
-        .defaultValue(Keybind.none())
-        .build()
-    );
-
-    private final Setting<Integer> delaySet = sgGeneral.add(new IntSetting.Builder()
-        .name("delay")
-        .description("Clipbind delay. Only here because some clients dont work properly...")
-        .defaultValue(2)
+    private final Setting<Integer> vClipJumpDelay = sgGeneral.add(new IntSetting.Builder()
+        .name("v-clip-jump-delay")
+        .description("The delay on where to cancel jumps (after vclipping)")
+        .defaultValue(10)
         .sliderRange(0, 20)
-        .visible(() -> clipBind.get().isSet())
+        .visible(vClipJump::get)
         .build()
     );
-    int delay = 0;
 
     public PhaseFix() {
         super(TarAddon.CATEGORY, "phase-fix", "Fixes some issues regarding phase. For testing only!");
     }
+
+    int delay = 0;
+    boolean wiggleBack = false;
 
     @Override
     public void onActivate() {
@@ -90,64 +83,69 @@ public class PhaseFix extends TarModule {
     }
 
     @EventHandler
-    private void onMouseButton(MouseClickEvent event) {
-        if (event.action == KeyAction.Press && match(clipBind.get(), Keybind.fromButton(event.button())) && Utils.canUpdate()) {
-            // So goofy omfg
-            delay = delaySet.get();
-        }
-    }
-
-    private boolean match(Keybind one, Keybind two) {
-        return one.getValue() == two.getValue() && one.isKey() == two.isKey();
-    }
-
-
-    @EventHandler
     private void onMove(PlayerMoveEvent event) {
         if (!Utils.canUpdate() || isNotSurvival()) return;
 
-        if (burrowedObsidian() && slowdown.get()) {
-            Vec3d vel = PlayerUtils.getHorizontalVelocity(slowspeed.get());
+        if (burrowedObsidian() && fly.get()) {
+            Vec3d vel = PlayerUtils.getHorizontalVelocity(flySpeed.get());
+
+            if (vel.length() == 0 && wiggle.get()) {
+                // NOT MOVING; WIGGLE
+                Vec3d blockPos = mc.player.getBlockPos().toCenterPos();
+
+                double dx = blockPos.getX() - mc.player.getX();
+                double dz = blockPos.getZ() - mc.player.getZ();
+
+                // 2d length
+                double len = Math.sqrt(dx*dx + dz*dz);
+                double x;
+                double z;
+                if (len < 1e-5) {
+                    x = 1;
+                    z = 0;
+                } else {
+                    x = dx / len;
+                    z = dz / len;
+                }
+
+                vel = new Vec3d(x, 0, z).multiply(flySpeed.get() / 20);
+
+                if (wiggleBack) {
+                    vel = vel.negate();
+                }
+            }
+
             ((IVec3d) event.movement).meteor$set(vel.x, event.movement.y, vel.z);
         }
     }
 
     @EventHandler
     private void onTick(TickEvent.Pre event) {
-        // if (Utils.canUpdate() && !isNotSurvival() && burrowedObsidian()) {
-        //    mc.player.setOnGround(onground.get());
-        // }
-
+        wiggleBack = !wiggleBack;
         // stupid
         if (delay > 0) {
             delay--;
-            if (delay == 0) {
-                if (burrowedObsidian() && checkHead() && !isNotSurvival()) {
-                    mc.player.setPosition(mc.player.getX(), mc.player.getY() + 1, mc.player.getZ());
-                    // Packet will be sent on tick anyways, stop flaggin with this?
-                    if (packet.get()) {
-                        sendPacket(new PlayerMoveC2SPacket.PositionAndOnGround(mc.player.getX(), mc.player.getY(), mc.player.getZ(), false, mc.player.horizontalCollision));
-                    }
-                }
-            }
         }
     }
 
 
     @EventHandler
     private void onJump(PlayerJumpEvent event) {
-        if (!Utils.canUpdate() || isNotSurvival()) return;
+        if (!Utils.canUpdate() || isNotSurvival() || !vClipJump.get()) return;
 
-        if (burrowedObsidian()) {
-            if (vclip.get() && checkHead()) {
-                // TP 1 block up
-                event.cancel();
-                mc.player.setPosition(mc.player.getX(), mc.player.getY() + 1, mc.player.getZ());
-                // Packet will be sent on tick anyways, stop flaggin with this?
-                if (packet.get()) {
-                    sendPacket(new PlayerMoveC2SPacket.PositionAndOnGround(mc.player.getX(), mc.player.getY(), mc.player.getZ(), false, mc.player.horizontalCollision));
-                }
-            }
+        // Prevent jumping instantly after vclipping
+        if (delay > 0) {
+            event.cancel();
+            return;
+        }
+
+        if (burrowedObsidian() && checkHead()) {
+            delay = vClipJumpDelay.get();
+            // TP 1 block up
+            event.cancel();
+            mc.player.setPosition(mc.player.getX(), mc.player.getY() + 1, mc.player.getZ());
+            // Packet will be sent on tick anyways, stop flaggin with this?
+            sendPacket(new PlayerMoveC2SPacket.PositionAndOnGround(mc.player.getX(), mc.player.getY(), mc.player.getZ(), false, mc.player.horizontalCollision));
         }
     }
 
@@ -156,7 +154,7 @@ public class PhaseFix extends TarModule {
         if (!Utils.canUpdate() || isNotSurvival()) return;
 
         if (event.packet instanceof PlayerMoveC2SPacket && burrowedObsidian()) {
-            ((PlayerMoveC2SPacketAccessor) event.packet).meteor$setOnGround(onground.get());
+            ((PlayerMoveC2SPacketAccessor) event.packet).meteor$setOnGround(onGround.get());
         }
     }
 

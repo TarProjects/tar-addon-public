@@ -108,76 +108,87 @@ public class RegearBot extends TarModule {
     private void onTick(TickEvent.Pre event) {
         if (!Utils.canUpdate()) return;
 
-        if (stage == Stage.Wait) {
-            if (counter >= delay.get()) {
-                stage = Stage.Pot;
-                counter = 0;
-            } else {
-                counter++;
-                return;
-            }
+        switch (stage) {
+            case Wait -> tickWait();
+            case Pot -> tickPot();
+            case DropArmor -> tickDropArmor();
+            case ChinaExploit -> tickChinaExploit();
+            default -> {}
         }
+    }
 
-        if (stage == Stage.Pot) {
-            // "complex" logic to not accidentally throw same pot on high ping
-            ArrayList<Integer> items = TarInvUtils.findInHotbar(itemStack -> itemStack.getItem() == Items.SPLASH_POTION);
-            int slot = -1;
-
-            for (Integer item : items) {
-                if (!thrown.contains(item)) {
-                    slot = item;
-                    break;
-                }
-            }
-            if (slot != -1) {
-                thrown.add(slot); // no duplicate throw
-                InvUtils.swap(slot, true);
-
-                Hand hand = Hand.MAIN_HAND;
-                if (slot == SlotUtils.OFFHAND) hand = Hand.OFF_HAND;
-
-                sendPacket(new PlayerInteractItemC2SPacket(hand, 0, mc.player.getYaw(), -90));
-
-                InvUtils.swapBack();
-                return;
-            } else {
-                stage = Stage.DropArmor;
-                counter = 0;
-                thrown.clear();
-            }
-        }
-
-
-        if (stage == Stage.DropArmor) {
-            if (!dropArmor.get() || counter >= 4 * modulo.get()) { // either done dropping or not gonna drop armor
-                counter = 0;
-                if (activateChinaExploit.get()) {
-                    stage = Stage.ChinaExploit;
-                } else {
-                    stage = Stage.None;
-                }
-                mc.getNetworkHandler().sendChatCommand("kill");
-                return;
-            }
-            if (counter % modulo.get() != 0) {
-                // skip ticks
-                counter++;
-                return;
-            }
-            InvUtils.drop().slot(SlotUtils.ARMOR_START + (counter / modulo.get()));
+    private void tickWait() {
+        if (counter >= delay.get()) {
+            stage = Stage.Pot;
+            counter = 0;
+        } else {
             counter++;
         }
+    }
 
-        if (stage == Stage.ChinaExploit) {
-            if (counter >= chinaExploitDelay.get()) {
+    private void tickPot() {
+        int slot = findThrowable();
+
+        if (slot != -1) { // item exists in hotbar
+            thrown.add(slot); // no duplicate throw
+            throwPot(slot);
+            return;
+        }
+
+        // slot wasn't found
+        stage = Stage.DropArmor;
+        counter = 0;
+        thrown.clear();
+    }
+
+    private int findThrowable() {
+        // "complex" logic to not accidentally throw same pot on high ping
+        ArrayList<Integer> items = TarInvUtils.findInHotbar(itemStack -> itemStack.getItem() == Items.SPLASH_POTION);
+
+        for (Integer slot : items) {
+            if (!thrown.contains(slot)) {
+                return slot;
+            }
+        }
+        return -1;
+    }
+
+    private void throwPot(int slot) {
+        InvUtils.swap(slot, true);
+        Hand hand = (slot == SlotUtils.OFFHAND) ? Hand.OFF_HAND : Hand.MAIN_HAND;
+        sendPacket(new PlayerInteractItemC2SPacket(hand, 0, mc.player.getYaw(), -90));
+        InvUtils.swapBack();
+    }
+
+    private void tickDropArmor() {
+        if (!dropArmor.get() || counter >= 4 * modulo.get()) { // either done dropping or not gonna drop armor
+            counter = 0;
+            if (activateChinaExploit.get()) {
+                stage = Stage.ChinaExploit;
+            } else {
                 stage = Stage.None;
-                counter = 0;
-                Objects.requireNonNull(Modules.get().get(ChinaExploit.class)).toggle();
-                return;
             }
-
-            counter++;
+            mc.getNetworkHandler().sendChatCommand("kill");
+            return;
         }
+        if (counter % modulo.get() != 0) {
+            // skip ticks
+            counter++;
+            return;
+        }
+        InvUtils.drop().slot(SlotUtils.ARMOR_START + (counter / modulo.get()));
+        counter++;
+    }
+
+    private void tickChinaExploit() {
+        if (counter >= chinaExploitDelay.get()) {
+            stage = Stage.None;
+            counter = 0;
+            Objects.requireNonNull(Modules.get().get(ChinaExploit.class)).toggle();
+            return;
+        }
+
+        counter++;
     }
 
     @EventHandler

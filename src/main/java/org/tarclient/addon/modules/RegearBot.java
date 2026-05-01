@@ -235,7 +235,6 @@ public class RegearBot extends TarModule {
 
             if (usernames.get().contains(username) && msg.strip().equalsIgnoreCase((regearCommand.get().strip()))) {
                 regear(username);
-                stage = Stage.Wait;
             }
         }
     }
@@ -261,6 +260,7 @@ public class RegearBot extends TarModule {
         }
 
         mc.getNetworkHandler().sendPacket(new SpectatorTeleportC2SPacket(player.getProfile().id()));
+        stage = Stage.Wait;
     }
 
 

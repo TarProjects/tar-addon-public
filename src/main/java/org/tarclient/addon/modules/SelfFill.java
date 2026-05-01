@@ -7,12 +7,14 @@ import meteordevelopment.meteorclient.utils.player.FindItemResult;
 import meteordevelopment.meteorclient.utils.player.InvUtils;
 import meteordevelopment.meteorclient.utils.player.Rotations;
 import meteordevelopment.orbit.EventHandler;
+import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.Blocks;
 import net.minecraft.block.ShapeContext;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.decoration.EndCrystalEntity;
-import net.minecraft.item.Items;
+import net.minecraft.item.BlockItem;
+import net.minecraft.item.ItemStack;
 import net.minecraft.network.packet.c2s.play.HandSwingC2SPacket;
 import net.minecraft.network.packet.c2s.play.PlayerInteractBlockC2SPacket;
 import net.minecraft.network.packet.c2s.play.PlayerInteractEntityC2SPacket;
@@ -26,8 +28,12 @@ import net.minecraft.util.math.Direction;
 import net.minecraft.util.shape.VoxelShape;
 import org.tarclient.addon.TarAddon;
 import org.tarclient.addon.TarModule;
+import org.tarclient.addon.utils.BurrowUtils;
 
-import static org.tarclient.addon.utils.BurrowUtility.checkHead;
+import java.util.List;
+
+import static org.tarclient.addon.utils.BurrowUtils.checkHead;
+import static org.tarclient.addon.utils.BurrowUtils.getSpecialBlockPos;
 
 public class SelfFill extends TarModule {
     // Le china
@@ -37,29 +43,11 @@ public class SelfFill extends TarModule {
     private final static int loop = 3;
     private final static double gravity = 0.98;
     private final static double minus = 0.08;
+
     private final SettingGroup sgGeneral = this.settings.getDefaultGroup();
+    private final SettingGroup sgBypass = this.settings.createGroup("Bypass");
+    private final SettingGroup sgBlocks = this.settings.createGroup("Blocks");
 
-    private final Setting<Boolean> onground = sgGeneral.add(new BoolSetting.Builder()
-        .name("on-ground")
-        .description("Spoofs on-ground value. Set this to whichever you want the onground value to be.")
-        .defaultValue(true)
-        .build()
-    );
-
-    private final Setting<Boolean> ongroundtwo = sgGeneral.add(new BoolSetting.Builder()
-        .name("on-ground-two")
-        .description("Spoofs on-ground value. Set this to whichever you want the onground value to be.")
-        .defaultValue(true)
-        .build()
-    );
-
-    private final Setting<Double> offset = sgGeneral.add(new DoubleSetting.Builder()
-        .name("offset")
-        .description("Offset which is used while burrowing. Leave as 10 if unsure.")
-        .defaultValue(10)
-        .sliderRange(-10, 10)
-        .build()
-    );
 
     private final Setting<Boolean> autodisable = sgGeneral.add(new BoolSetting.Builder()
         .name("autodisable")
@@ -93,6 +81,51 @@ public class SelfFill extends TarModule {
         .build()
     );
 
+    /* --- Bypass --- */
+    private final Setting<Boolean> onground = sgBypass.add(new BoolSetting.Builder()
+        .name("on-ground")
+        .description("Spoofs on-ground value. Set this to whichever you want the onground value to be.")
+        .defaultValue(true)
+        .build()
+    );
+
+    private final Setting<Boolean> ongroundtwo = sgBypass.add(new BoolSetting.Builder()
+        .name("on-ground-two")
+        .description("Spoofs on-ground value. Set this to whichever you want the onground value to be.")
+        .defaultValue(true)
+        .build()
+    );
+
+    private final Setting<Integer> iterations = sgBypass.add(new IntSetting.Builder()
+        .name("iterations")
+        .description("How many iterations to do. Keep as low as possible without flagging")
+        .defaultValue(3)
+        .sliderRange(0, 20)
+        .build()
+    );
+
+    private final Setting<Double> offset = sgBypass.add(new DoubleSetting.Builder()
+        .name("offset")
+        .description("Offset which is used while burrowing. Leave as 10 if unsure.")
+        .defaultValue(10)
+        .sliderRange(-10, 10)
+        .build()
+    );
+
+    /* --- Blocks --- */
+    private final Setting<List<Block>> blocks = sgBlocks.add(new BlockListSetting.Builder()
+        .name("blocks")
+        .description("Primary blocks to use")
+        .defaultValue(Blocks.OBSIDIAN)
+        .build()
+    );
+    private final Setting<List<Block>> backupBlocks = sgBlocks.add(new BlockListSetting.Builder()
+        .name("backup-blocks")
+        .description("Secondary blocks")
+        .defaultValue(Blocks.ENDER_CHEST)
+        .build()
+    );
+
     BlockPos start;
     int ticks;
 
@@ -106,20 +139,19 @@ public class SelfFill extends TarModule {
             this.toggle();
             return;
         }
-        start = mc.player.getBlockPos();
+        start = getSpecialBlockPos();
         ticks = 0;
 
         if (autodisable.get()) {
-            FindItemResult obsidian = InvUtils.findInHotbar(Items.OBSIDIAN);
-            if (!obsidian.found()) {
-                error("No obsidian found in hotbar, disabling");
+            FindItemResult block = findPlaceable();
+            if (!block.found()) {
+                error("No valid blocks found in hotbar, disabling!");
                 this.toggle();
                 return;
             }
 
             if (canBurrow() && checkHead()) {
-                burrow(obsidian.slot());
-                info("Burrowed!");
+                tryBurrow(block.slot());
             }
             this.toggle();
         }
@@ -127,14 +159,14 @@ public class SelfFill extends TarModule {
 
     @EventHandler
     private void onTick(TickEvent.Pre event) {
-        if (!Utils.canUpdate() || autodisable.get() || !mc.player.getBlockPos().equals(start)) {
+        if (!Utils.canUpdate() || autodisable.get() || !getSpecialBlockPos().equals(start)) {
             this.toggle();
             return;
         }
 
-        FindItemResult obsidian = InvUtils.findInHotbar(Items.OBSIDIAN);
-        if (!obsidian.found()) {
-            error("No obsidian found in hotbar, disabling");
+        FindItemResult block = findPlaceable();
+        if (!block.found()) {
+            error("No valid blocks found in hotbar, disabling!");
             this.toggle();
             return;
         }
@@ -148,7 +180,7 @@ public class SelfFill extends TarModule {
         if (attack.get()) {
             for (Entity entity : mc.world.getEntities()) {
                 if (!(entity instanceof EndCrystalEntity)) continue;
-                if (Box.from(new BlockBox(mc.player.getBlockPos())).intersects(entity.getBoundingBox())) {
+                if (Box.from(new BlockBox(getSpecialBlockPos())).intersects(entity.getBoundingBox())) {
                     if (rotate.get()) {
                         Rotations.rotate(Rotations.getPitch(entity), Rotations.getYaw(entity),
                             () -> sendPacket(PlayerInteractEntityC2SPacket.attack(entity, mc.player.isSneaking())));
@@ -165,35 +197,84 @@ public class SelfFill extends TarModule {
             return;
         }
 
-        burrow(obsidian.slot());
+        tryBurrow(block.slot());
         info("Burrowed!");
-
 
         ticks = cooldown.get();
     }
 
-    public void burrow(int slot) {
+    public void tryBurrow(int slot) {
+        ItemStack stack = mc.player.getInventory().getStack(slot);
+        if (stack.getItem() instanceof BlockItem blockItem) {
+            double height = BurrowUtils.findBlockHeight(blockItem);
+            double remainder = Math.ceil(mc.player.getY()) - mc.player.getY();
+            double velocity = findBurrowVelocity(height + remainder - 1e-7, iterations.get()); // magic, burrow into blockHeight - 1e-7 to bypass collision
+            burrow(slot, velocity);
+            info("Burrowed!");
+        }
+        throw new IllegalStateException("Slot mismatch!");
+    }
+
+    public FindItemResult findPlaceable() {
+        FindItemResult block = InvUtils.findInHotbar(itemStack -> {
+            if (itemStack.getItem() instanceof BlockItem) {
+                Block itemBlock = ((BlockItem) itemStack.getItem()).getBlock();
+                return blocks.get().contains(itemBlock);
+            }
+            return false;
+        });
+        if (!block.found()) {
+            // backup
+            block = InvUtils.findInHotbar(itemStack -> {
+                if (itemStack.getItem() instanceof BlockItem) {
+                    Block itemBlock = ((BlockItem) itemStack.getItem()).getBlock();
+                    return backupBlocks.get().contains(itemBlock);
+                }
+                return false;
+            });
+
+            if (!block.found()) {
+                return new FindItemResult(-1, 0);
+            }
+        }
+
+        return block;
+    }
+
+    public void burrow(int slot, double velocity) {
         double y = 0.0;
-        double velocity = value;
+
         for (int i = 0; i < loop; i++) {
             y = y + velocity;
-            // 0.3681288
             sendPacket(new PlayerMoveC2SPacket.Full(mc.player.getX(), mc.player.getY() + y, mc.player.getZ(), mc.player.getYaw(), 90, onground.get(), mc.player.horizontalCollision));
-            //msg(String.valueOf(y));
             velocity = (velocity - minus) * gravity;
         }
 
         InvUtils.swap(slot, true);
-        sendPacket(new PlayerInteractBlockC2SPacket(Hand.MAIN_HAND, new BlockHitResult(mc.player.getBlockPos().down().toCenterPos(), Direction.UP, mc.player.getBlockPos().down(), false), 0));
+        sendPacket(new PlayerInteractBlockC2SPacket(Hand.MAIN_HAND, new BlockHitResult(getSpecialBlockPos().down().toCenterPos(), Direction.UP, getSpecialBlockPos().down(), false), 0));
         InvUtils.swapBack();
 
         sendPacket(new PlayerMoveC2SPacket.PositionAndOnGround(mc.player.getX(), mc.player.getY() + y + offset.get(), mc.player.getZ(), ongroundtwo.get(), mc.player.horizontalCollision));
     }
 
+    @SuppressWarnings("UnnecessaryLocalVariable")
+    private double findBurrowVelocity(double targetHeight, int iterations) {
+        double A = 0.08;
+        double B = 0.98;
+        double C = targetHeight;
+        double N = iterations;
+
+        double BN = Math.pow(B, N);
+        double numerator = C * (1 - B) * (1 - B) + A * B * (BN - N * B + N - 1);
+        double denominator = (1 - B) * (1 - BN);
+        return numerator / denominator;
+    }
+
     private boolean canBurrow() {
-        if (!mc.player.getBlockStateAtPos().isReplaceable()) return false;
-        if (!canPlace(Blocks.OBSIDIAN.getDefaultState(), mc.player.getBlockPos(), ShapeContext.absent())) return false;
-        if (mc.world.getBlockState(mc.player.getBlockPos().down()).isReplaceable()) return false;
+        BlockPos pos = getSpecialBlockPos();
+        if (!mc.world.getBlockState(pos).isReplaceable()) return false;
+        if (!canPlace(Blocks.OBSIDIAN.getDefaultState(), pos, ShapeContext.absent())) return false;
+        if (mc.world.getBlockState(pos.down()).isReplaceable()) return false;
         return mc.player.isOnGround();
     }
 

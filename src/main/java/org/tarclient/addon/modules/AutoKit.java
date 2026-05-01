@@ -31,7 +31,7 @@ public class AutoKit extends TarModule {
         .build()
     );
 
-    private final Setting<List<Item>> xcarry = sgGeneral.add(new ItemListSetting.Builder()
+    private final Setting<List<Item>> xCarry = sgGeneral.add(new ItemListSetting.Builder()
         .name("x-carry")
         .description("Which items to put in X-Carry. Leave empty if you don't want to use this")
         .build()
@@ -42,7 +42,7 @@ public class AutoKit extends TarModule {
         .description("When to trigger X-Carry")
         .defaultValue(20)
         .sliderRange(0, 20)
-        .visible(() -> !xcarry.get().isEmpty())
+        .visible(() -> !xCarry.get().isEmpty())
         .build()
     );
 
@@ -78,13 +78,13 @@ public class AutoKit extends TarModule {
         if (shouldXcarry) {
             ticks++;
             if (ticks >= delay.get()) {
-                if (!xcarry.get().isEmpty()) {
+                if (!xCarry.get().isEmpty()) {
                     info("Moving items into XCarry");
                     // Only 4 slots exist...
                     int count = 1;
                     // Loop through main inventory, excluding armor, offhand, crafting
                     for (int i = 9; i < 45; i++) {
-                        if (xcarry.get().contains(mc.player.getInventory().getStack(i).getItem())) {
+                        if (xCarry.get().contains(mc.player.getInventory().getStack(i).getItem())) {
                             InvUtils.move().fromId(i).toId(count);
                             count++;
                             if (count >= 5) {

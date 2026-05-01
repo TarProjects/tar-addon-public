@@ -9,15 +9,16 @@ import meteordevelopment.meteorclient.settings.*;
 import meteordevelopment.meteorclient.utils.Utils;
 import meteordevelopment.meteorclient.utils.player.PlayerUtils;
 import meteordevelopment.orbit.EventHandler;
+import net.minecraft.block.Block;
 import net.minecraft.network.packet.c2s.play.PlayerMoveC2SPacket;
+import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.GameMode;
 import org.tarclient.addon.TarAddon;
 import org.tarclient.addon.TarModule;
 import org.tarclient.addon.events.PlayerJumpEvent;
 
-import static org.tarclient.addon.utils.BurrowUtility.burrowedObsidian;
-import static org.tarclient.addon.utils.BurrowUtility.checkHead;
+import static org.tarclient.addon.utils.BurrowUtils.*;
 
 public class PhaseFix extends TarModule {
     private final SettingGroup sgGeneral = this.settings.getDefaultGroup();
@@ -86,12 +87,12 @@ public class PhaseFix extends TarModule {
     private void onMove(PlayerMoveEvent event) {
         if (!Utils.canUpdate() || isNotSurvival()) return;
 
-        if (burrowedObsidian() && fly.get()) {
+        if (isBurrowed() && fly.get()) {
             Vec3d vel = PlayerUtils.getHorizontalVelocity(flySpeed.get());
 
             if (vel.length() == 0 && wiggle.get()) {
                 // NOT MOVING; WIGGLE
-                Vec3d blockPos = mc.player.getBlockPos().toCenterPos();
+                Vec3d blockPos = getSpecialBlockPos().toCenterPos();
 
                 double dx = blockPos.getX() - mc.player.getX();
                 double dz = blockPos.getZ() - mc.player.getZ();
@@ -139,11 +140,17 @@ public class PhaseFix extends TarModule {
             return;
         }
 
-        if (burrowedObsidian() && checkHead()) {
+        if (isBurrowed() && checkHead()) {
             delay = vClipJumpDelay.get();
-            // TP 1 block up
             event.cancel();
-            mc.player.setPosition(mc.player.getX(), mc.player.getY() + 1, mc.player.getZ());
+
+            BlockPos blockPos = getSpecialBlockPos();
+
+            Block current = mc.world.getBlockState(blockPos).getBlock();
+            double offset = findBlockHeight(current);
+            double y = blockPos.getY() + offset;
+
+            mc.player.setPosition(mc.player.getX(), y, mc.player.getZ());
             // Packet will be sent on tick anyways, stop flaggin with this?
             sendPacket(new PlayerMoveC2SPacket.PositionAndOnGround(mc.player.getX(), mc.player.getY(), mc.player.getZ(), false, mc.player.horizontalCollision));
         }
@@ -153,7 +160,7 @@ public class PhaseFix extends TarModule {
     private void onPacketSend(PacketEvent.Send event) {
         if (!Utils.canUpdate() || isNotSurvival()) return;
 
-        if (event.packet instanceof PlayerMoveC2SPacket && burrowedObsidian()) {
+        if (event.packet instanceof PlayerMoveC2SPacket && isBurrowed()) {
             ((PlayerMoveC2SPacketAccessor) event.packet).meteor$setOnGround(onGround.get());
         }
     }

@@ -45,7 +45,7 @@ public class ChorusESP extends TarModule {
         .defaultValue(new SettingColor(255, 0, 0))
         .build()
     );
-    final CopyOnWriteArrayList<SoundDelay> renderq = new CopyOnWriteArrayList<>();
+    final CopyOnWriteArrayList<SoundDelay> renderQueue = new CopyOnWriteArrayList<>();
 
     public ChorusESP() {
         super(TarAddon.CATEGORY, "chorus-esp", "Renders chorus fruit sounds");
@@ -53,15 +53,15 @@ public class ChorusESP extends TarModule {
 
     @Override
     public void onActivate() {
-        renderq.clear();
+        renderQueue.clear();
     }
 
     @EventHandler
     private void onTick(TickEvent.Pre event) {
-        for (SoundDelay delay : renderq) {
+        for (SoundDelay delay : renderQueue) {
             delay.ticks--;
             if (delay.ticks <= 0) {
-                renderq.remove(delay);
+                renderQueue.remove(delay);
             }
         }
     }
@@ -69,14 +69,14 @@ public class ChorusESP extends TarModule {
     @EventHandler
     private void onPlaySound(PlaySoundEvent event) {
         if (event.sound.getId().equals(SoundEvents.ITEM_CHORUS_FRUIT_TELEPORT.id())) {
-            renderq.add(new SoundDelay(new Vec3d(event.sound.getX(), event.sound.getY(), event.sound.getZ()), ticks.get()));
+            renderQueue.add(new SoundDelay(new Vec3d(event.sound.getX(), event.sound.getY(), event.sound.getZ()), ticks.get()));
             event.cancel();
         }
     }
 
     @EventHandler
     private void onRender(Render3DEvent event) {
-        renderq.forEach(pos -> {
+        renderQueue.forEach(pos -> {
             double x = pos.pos.x;
             double y = pos.pos.y;
             double z = pos.pos.z;

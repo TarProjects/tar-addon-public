@@ -106,12 +106,6 @@ public class AntiPearl extends TarModule {
 
     }
 
-    @EventHandler
-    private void onInteractItem(final InteractItemEvent event) {
-        if (!Utils.canUpdate() || mc.player.getStackInHand(event.hand).getItem() != Items.ENDER_PEARL) return;
-
-    }
-
 
     // return true if pearl hits block with distance <= 3
     private boolean hitsBlock() {

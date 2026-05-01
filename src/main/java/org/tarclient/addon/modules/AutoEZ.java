@@ -29,7 +29,7 @@ public class AutoEZ extends TarModule {
     private final Setting<Integer> elocap = sgGeneral.add(new IntSetting.Builder()
         .name("elo-cap")
         .description("If people are under this elo, Auto EZ messages wont be sent")
-        .defaultValue(1500)
+        .defaultValue(1800)
         .sliderRange(0, 2500)
         .build()
     );

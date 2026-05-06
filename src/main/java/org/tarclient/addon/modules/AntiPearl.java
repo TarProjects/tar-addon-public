@@ -1,8 +1,6 @@
 package org.tarclient.addon.modules;
 
-import meteordevelopment.meteorclient.events.entity.player.InteractItemEvent;
 import meteordevelopment.meteorclient.events.packets.PacketEvent;
-import meteordevelopment.meteorclient.mixininterface.IClientPlayerInteractionManager;
 import meteordevelopment.meteorclient.settings.BoolSetting;
 import meteordevelopment.meteorclient.settings.DoubleSetting;
 import meteordevelopment.meteorclient.settings.Setting;
@@ -10,7 +8,6 @@ import meteordevelopment.meteorclient.settings.SettingGroup;
 import meteordevelopment.meteorclient.utils.Utils;
 import meteordevelopment.orbit.EventHandler;
 import net.minecraft.entity.Entity;
-import net.minecraft.entity.player.PlayerInventory;
 import net.minecraft.entity.projectile.ProjectileUtil;
 import net.minecraft.item.Items;
 import net.minecraft.network.packet.c2s.play.PlayerInteractBlockC2SPacket;
@@ -22,9 +19,9 @@ import net.minecraft.util.hit.EntityHitResult;
 import net.minecraft.util.hit.HitResult;
 import net.minecraft.util.math.Box;
 import net.minecraft.util.math.Vec3d;
-import net.minecraft.world.RaycastContext;
 import org.tarclient.addon.TarAddon;
 import org.tarclient.addon.TarModule;
+import org.tarclient.addon.utils.BlockUtils;
 
 import java.util.function.Predicate;
 
@@ -55,12 +52,11 @@ public class AntiPearl extends TarModule {
         .defaultValue(true)
         .build()
     );
+    int realSlot = -1; // i hate silent swaps
 
     public AntiPearl() {
         super(TarAddon.CATEGORY, "anti-pearl", "Cancels/modifies pearl throw depending on scenario");
     }
-
-    int realSlot = -1; // i hate silent swaps
 
     @EventHandler
     private void onPacketSend(final PacketEvent.Send event) {
@@ -70,15 +66,15 @@ public class AntiPearl extends TarModule {
             realSlot = packet.getSelectedSlot();
             return;
         }
-        if (event.packet instanceof UpdateSelectedSlotS2CPacket packet) {
-            realSlot = packet.slot();
+        if (event.packet instanceof UpdateSelectedSlotS2CPacket(int slot)) {
+            realSlot = slot;
             return;
         }
 
 
         if (event.packet instanceof PlayerInteractItemC2SPacket packet) {
             if (packet.getHand() == Hand.OFF_HAND) return;
-            if (realSlot == -1) ((IClientPlayerInteractionManager) mc.interactionManager).meteor$syncSelected();
+            if (realSlot == -1) return;
             if (mc.player.getInventory().getStack(realSlot).getItem() != Items.ENDER_PEARL) return;
 
             if (entities.get() && hitsEntity()) {
@@ -96,7 +92,7 @@ public class AntiPearl extends TarModule {
         }
         if (event.packet instanceof PlayerInteractBlockC2SPacket packet) {
             if (packet.getHand() == Hand.OFF_HAND) return;
-            if (realSlot == -1) ((IClientPlayerInteractionManager) mc.interactionManager).meteor$syncSelected();
+            if (realSlot == -1) return;
             if (mc.player.getInventory().getStack(realSlot).getItem() != Items.ENDER_PEARL) return;
 
             if (blocks.get()) {
@@ -110,27 +106,9 @@ public class AntiPearl extends TarModule {
     // return true if pearl hits block with distance <= 3
     private boolean hitsBlock() {
         double distance = 3;
-        float tickProgress = mc.getRenderTickCounter().getTickProgress(true);
+        HitResult hitResult = BlockUtils.raycastBlocks(distance);
 
-        Vec3d cameraPos = mc.player.getCameraPosVec(tickProgress);
-        Vec3d rotation = mc.player.getRotationVec(tickProgress);
-        Vec3d lookVector = rotation.multiply(distance);
-        Vec3d endPos = cameraPos.add(lookVector);
-
-        RaycastContext context = new RaycastContext(
-            cameraPos,
-            endPos,
-            RaycastContext.ShapeType.OUTLINE,
-            RaycastContext.FluidHandling.NONE,
-            mc.getCameraEntity()
-        );
-
-        HitResult hitResult = mc.world.raycast(context);
-
-        if (hitResult != null && hitResult.getType() == HitResult.Type.BLOCK) {
-            return true;
-        }
-        return false;
+        return hitResult != null && hitResult.getType() == HitResult.Type.BLOCK;
     }
 
     // return true if pearl hits entity
@@ -147,8 +125,7 @@ public class AntiPearl extends TarModule {
 
         Predicate<Entity> entityPredicate = (entity) -> {
             if (entity == mc.player) return false;
-            if (entity.getBoundingBox().contains(mc.player.getEyePos())) return false;
-            return true;
+            return !entity.getBoundingBox().contains(mc.player.getEyePos());
         };
 
         EntityHitResult entityRayCast = ProjectileUtil.raycast(

@@ -1,6 +1,8 @@
 package org.tarclient.addon.modules;
 
-import meteordevelopment.meteorclient.settings.*;
+import meteordevelopment.meteorclient.settings.BoolSetting;
+import meteordevelopment.meteorclient.settings.Setting;
+import meteordevelopment.meteorclient.settings.SettingGroup;
 import org.tarclient.addon.TarAddon;
 import org.tarclient.addon.TarModule;
 

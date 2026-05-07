@@ -16,8 +16,8 @@ import meteordevelopment.meteorclient.settings.*;
 import meteordevelopment.meteorclient.utils.Utils;
 import meteordevelopment.meteorclient.utils.misc.MeteorStarscript;
 import meteordevelopment.orbit.EventHandler;
-import org.meteordev.starscript.Script;
 import net.minecraft.util.Util;
+import org.meteordev.starscript.Script;
 import org.tarclient.addon.TarAddon;
 import org.tarclient.addon.TarModule;
 
@@ -52,7 +52,8 @@ public class BetterRichPresence extends TarModule {
         .description("How to select messages for the first line.")
         .defaultValue(SelectMode.Sequential)
         .build()
-    );    private final Setting<List<String>> line1Strings = sgLine1.add(new StringListSetting.Builder()
+    );
+    private final Setting<List<String>> line1Strings = sgLine1.add(new StringListSetting.Builder()
         .name("line-1-messages")
         .description("Messages used for the first line.")
         .defaultValue("{player}", "{server}")
@@ -76,7 +77,8 @@ public class BetterRichPresence extends TarModule {
         .build()
     );
     private final SettingGroup sgImage1 = settings.createGroup("Image 1");
-    private final SettingGroup sgImage2 = settings.createGroup("Image 2");    private final Setting<List<String>> line2Strings = sgLine2.add(new StringListSetting.Builder()
+    private final SettingGroup sgImage2 = settings.createGroup("Image 2");
+    private final Setting<List<String>> line2Strings = sgLine2.add(new StringListSetting.Builder()
         .name("line-2-messages")
         .description("Messages used for the second line.")
         .defaultValue("Meteor on Crack!", "{round(server.tps, 1)} TPS", "Playing on {server.difficulty} difficulty.", "{server.player_count} Players online")
@@ -113,7 +115,8 @@ public class BetterRichPresence extends TarModule {
         .build()
     );
     private final List<Script> line1Scripts = new ArrayList<>();
-    private final List<Script> line2Scripts = new ArrayList<>();    private final Setting<List<String>> image1Strings = sgImage1.add(new StringListSetting.Builder()
+    private final List<Script> line2Scripts = new ArrayList<>();
+    private final Setting<List<String>> image1Strings = sgImage1.add(new StringListSetting.Builder()
         .name("image-1-pair")
         .description("Pairs used for the first image.")
         .defaultValue("key,text")
@@ -124,7 +127,8 @@ public class BetterRichPresence extends TarModule {
     private final List<Script> image1Scripts = new ArrayList<>();
     private final List<Script> image2Scripts = new ArrayList<>();
     private boolean forceUpdate;
-    private int line1Ticks, line1I;    private final Setting<List<String>> image2Strings = sgImage2.add(new StringListSetting.Builder()
+    private int line1Ticks, line1I;
+    private final Setting<List<String>> image2Strings = sgImage2.add(new StringListSetting.Builder()
         .name("image-2-pair")
         .description("Pairs used for the second image.")
         .defaultValue("key,text")
@@ -135,6 +139,7 @@ public class BetterRichPresence extends TarModule {
     private int line2Ticks, line2I;
     private int image1Ticks, image1I;
     private int image2Ticks, image2I;
+
     public BetterRichPresence() {
         super(TarAddon.CATEGORY, "better-rich-presence", "Displays your presence on Discord.");
 
@@ -298,14 +303,6 @@ public class BetterRichPresence extends TarModule {
         Random,
         Sequential
     }
-
-
-
-
-
-
-
-
 
 
 }

@@ -211,8 +211,9 @@ public class SelfFill extends TarModule {
             double velocity = findBurrowVelocity(height + remainder - 1e-7, iterations.get()); // magic, burrow into blockHeight - 1e-7 to bypass collision
             burrow(slot, velocity);
             info("Burrowed!");
+        } else {
+            throw new IllegalStateException("Slot mismatch!");
         }
-        throw new IllegalStateException("Slot mismatch!");
     }
 
     public FindItemResult findPlaceable() {

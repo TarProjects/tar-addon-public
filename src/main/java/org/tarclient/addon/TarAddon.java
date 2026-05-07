@@ -8,10 +8,10 @@ import meteordevelopment.meteorclient.systems.modules.Modules;
 import meteordevelopment.meteorclient.utils.PreInit;
 import meteordevelopment.meteorclient.utils.Utils;
 import meteordevelopment.meteorclient.utils.misc.MeteorStarscript;
-import org.meteordev.starscript.value.Value;
-import org.meteordev.starscript.value.ValueMap;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.PlayerEntity;
+import org.meteordev.starscript.value.Value;
+import org.meteordev.starscript.value.ValueMap;
 import org.tarclient.addon.commands.TPCommand;
 import org.tarclient.addon.modules.*;
 
@@ -54,16 +54,20 @@ public class TarAddon extends MeteorAddon {
     @Override
     public void onInitialize() {
         Modules.get().add(new AntiPearl());
+        Modules.get().add(new AutoCEV());
         Modules.get().add(new AutoDuelAccept());
         Modules.get().add(new AutoEZ());
         Modules.get().add(new AutoKit());
         Modules.get().add(new AutoSpectator());
         Modules.get().add(new BetterRichPresence());
+        Modules.get().add(new BlinkESP());
         Modules.get().add(new PearlPhase());
         Modules.get().add(new SelfFill());
         Modules.get().add(new PhaseFix());
+        Modules.get().add(new PlaceObsidian());
         Modules.get().add(new RegearBot());
         Modules.get().add(new CornerClip());
+        Modules.get().add(new HeadBurrow());
         Modules.get().add(new InventoryFixes());
         Modules.get().add(new ChorusESP());
         Modules.get().add(new ChinaExploit());

@@ -52,6 +52,12 @@ public class TarModule extends Module {
         ((IChatHud) MeteorClient.mc.inGameHud.getChatHud()).meteor$add(text, id);
     }
 
+    public void sendPacketSilent(Packet<?> packet) {
+        if (packet != null && mc.getNetworkHandler() != null) {
+            mc.getNetworkHandler().getConnection().send(packet, null, true);
+        }
+    }
+
     public void sendPacket(Packet<?> packet) {
         if (packet != null && mc.getNetworkHandler() != null) {
             mc.getNetworkHandler().sendPacket(packet);

@@ -1,6 +1,5 @@
 package org.tarclient.addon.utils;
 
-import meteordevelopment.meteorclient.utils.Utils;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.Blocks;

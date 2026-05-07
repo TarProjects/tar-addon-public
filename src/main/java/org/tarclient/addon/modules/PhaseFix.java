@@ -71,12 +71,12 @@ public class PhaseFix extends TarModule {
         .build()
     );
 
+    int delay = 0;
+    boolean wiggleBack = false;
+
     public PhaseFix() {
         super(TarAddon.CATEGORY, "phase-fix", "Fixes some issues regarding phase. For testing only!");
     }
-
-    int delay = 0;
-    boolean wiggleBack = false;
 
     @Override
     public void onActivate() {
@@ -98,7 +98,7 @@ public class PhaseFix extends TarModule {
                 double dz = blockPos.getZ() - mc.player.getZ();
 
                 // 2d length
-                double len = Math.sqrt(dx*dx + dz*dz);
+                double len = Math.sqrt(dx * dx + dz * dz);
                 double x;
                 double z;
                 if (len < 1e-5) {

@@ -21,7 +21,7 @@ import net.minecraft.util.math.Box;
 import net.minecraft.util.math.Vec3d;
 import org.tarclient.addon.TarAddon;
 import org.tarclient.addon.TarModule;
-import org.tarclient.addon.utils.BlockUtils;
+import org.tarclient.addon.utils.TarBlockUtils;
 
 import java.util.function.Predicate;
 
@@ -106,7 +106,7 @@ public class AntiPearl extends TarModule {
     // return true if pearl hits block with distance <= 3
     private boolean hitsBlock() {
         double distance = 3;
-        HitResult hitResult = BlockUtils.raycastBlocks(distance);
+        HitResult hitResult = TarBlockUtils.raycastBlocks(distance);
 
         return hitResult != null && hitResult.getType() == HitResult.Type.BLOCK;
     }

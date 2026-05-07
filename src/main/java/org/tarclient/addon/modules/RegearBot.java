@@ -9,7 +9,6 @@ import meteordevelopment.meteorclient.utils.player.InvUtils;
 import meteordevelopment.meteorclient.utils.player.SlotUtils;
 import meteordevelopment.orbit.EventHandler;
 import net.minecraft.client.network.PlayerListEntry;
-import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
 import net.minecraft.network.packet.c2s.play.PlayerInteractItemC2SPacket;
 import net.minecraft.network.packet.c2s.play.SpectatorTeleportC2SPacket;
@@ -129,7 +128,8 @@ public class RegearBot extends TarModule {
             case Pot -> tickPot();
             case DropArmor -> tickDropArmor();
             case ChinaExploit -> tickChinaExploit();
-            default -> {}
+            default -> {
+            }
         }
     }
 
@@ -259,7 +259,7 @@ public class RegearBot extends TarModule {
             return;
         }
 
-        mc.getNetworkHandler().sendPacket(new SpectatorTeleportC2SPacket(player.getProfile().id()));
+        sendPacket(new SpectatorTeleportC2SPacket(player.getProfile().id()));
         stage = Stage.Wait;
     }
 

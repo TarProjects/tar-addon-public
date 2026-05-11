@@ -39,8 +39,6 @@ public class SelfFill extends TarModule {
     // Le china
     // TODO: make this work with math instead of meth, other blocks as well?
     // Note: these values make a jump reach a height of 1 - 1e-7 from the starting block, so its pretty precise
-    private final static double value = 0.41954563664807;
-    private final static int loop = 3;
     private final static double gravity = 0.98;
     private final static double minus = 0.08;
 
@@ -206,10 +204,11 @@ public class SelfFill extends TarModule {
     public void tryBurrow(int slot) {
         ItemStack stack = mc.player.getInventory().getStack(slot);
         if (stack.getItem() instanceof BlockItem blockItem) {
+            int iterations = this.iterations.get();
             double height = BurrowUtils.findBlockHeight(blockItem);
             double remainder = Math.ceil(mc.player.getY()) - mc.player.getY();
-            double velocity = findBurrowVelocity(height + remainder - 1e-7, iterations.get()); // magic, burrow into blockHeight - 1e-7 to bypass collision
-            burrow(slot, velocity);
+            double velocity = findBurrowVelocity(height + remainder - 1e-7, iterations); // magic, burrow into blockHeight - 1e-7 to bypass collision
+            burrow(slot, velocity, iterations);
             info("Burrowed!");
         } else {
             throw new IllegalStateException("Slot mismatch!");
@@ -242,10 +241,10 @@ public class SelfFill extends TarModule {
         return block;
     }
 
-    public void burrow(int slot, double velocity) {
+    public void burrow(int slot, double velocity, int iterations) {
         double y = 0.0;
 
-        for (int i = 0; i < loop; i++) {
+        for (int i = 0; i < iterations; i++) {
             y = y + velocity;
             sendPacket(new PlayerMoveC2SPacket.Full(mc.player.getX(), mc.player.getY() + y, mc.player.getZ(), mc.player.getYaw(), 90, onground.get(), mc.player.horizontalCollision));
             velocity = (velocity - minus) * gravity;

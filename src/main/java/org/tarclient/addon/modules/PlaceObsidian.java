@@ -3,7 +3,6 @@ package org.tarclient.addon.modules;
 import meteordevelopment.meteorclient.events.world.TickEvent;
 import meteordevelopment.meteorclient.settings.*;
 import meteordevelopment.meteorclient.utils.Utils;
-import meteordevelopment.meteorclient.utils.misc.Keybind;
 import meteordevelopment.meteorclient.utils.player.ChatUtils;
 import meteordevelopment.meteorclient.utils.player.FindItemResult;
 import meteordevelopment.meteorclient.utils.player.InvUtils;
@@ -23,7 +22,6 @@ import java.util.List;
 
 public class PlaceObsidian extends TarModule {
     private final SettingGroup sgGeneral = this.settings.getDefaultGroup();
-    private final SettingGroup sgDelay = this.settings.createGroup("Delay");
 
     private final Setting<Double> range = sgGeneral.add(new DoubleSetting.Builder()
         .name("range")
@@ -33,47 +31,21 @@ public class PlaceObsidian extends TarModule {
         .build()
     );
 
-    private final Setting<Keybind> keybind = sgGeneral.add(new KeybindSetting.Builder()
-        .name("bind")
-        .defaultValue(Keybind.none())
-        .build()
-    );
-
-    /* --- Delay --- */
-    private final Setting<Integer> preDelay = sgDelay.add(new IntSetting.Builder()
-        .name("pre-delay")
-        .description("The delay before block place")
-        .defaultValue(10)
-        .sliderRange(0, 20)
-        .build()
-    );
-
-    private final Setting<List<String>> preChat = sgDelay.add(new StringListSetting.Builder()
+    private final Setting<List<String>> preChat = sgGeneral.add(new StringListSetting.Builder()
         .name("pre-chat")
         .description("Chat commands to send each tick in its own line")
         .defaultValue("")
         .build()
     );
 
-    private final Setting<Integer> postDelay = sgDelay.add(new IntSetting.Builder()
-        .name("post-delay")
-        .description("The delay after placing block")
-        .defaultValue(10)
-        .sliderRange(0, 20)
-        .build()
-    );
-
-    private final Setting<List<String>> postChat = sgDelay.add(new StringListSetting.Builder()
+    private final Setting<List<String>> postChat = sgGeneral.add(new StringListSetting.Builder()
         .name("post-chat")
         .description("Chat commands to send each tick in its own line")
         .defaultValue("")
         .build()
     );
 
-
-    Stage stage = Stage.None;
     boolean hasSent = false;
-    boolean lastBind = false;
 
     public PlaceObsidian() {
         super(TarAddon.CATEGORY, "place-obsidian", "Places obsidian silently");
@@ -81,87 +53,63 @@ public class PlaceObsidian extends TarModule {
 
     @Override
     public void onActivate() {
-        stage = Stage.None;
         hasSent = false;
-        lastBind = keybind.get().isPressed();
+    }
+
+    @Override
+    public void onDeactivate() {
+        for (String message : postChat.get()) {
+            if (!message.isEmpty()) {
+                ChatUtils.sendPlayerMsg(message, false);
+            }
+        }
     }
 
     @EventHandler
     private void onTickPre(TickEvent.Pre event) {
         if (!Utils.canUpdate()) return;
 
-        boolean shouldPlace = keybind.get().isPressed() && !lastBind;
-        lastBind = keybind.get().isPressed();
-
-        switch (stage) {
-            case None:
-                if (mc.currentScreen != null || !shouldPlace) return;
-
-                if (!InvUtils.find(Items.OBSIDIAN).found()) {
-                    error("No items found!");
-                    onActivate();
-                    return;
-                }
-
-                this.stage = Stage.PreWait;
-                hasSent = false;
-            case PreWait:
-                if (!hasSent) {
-                    for (String message : preChat.get()) {
-                        if (!message.isEmpty()) {
-                            ChatUtils.sendPlayerMsg(message, false);
-                        }
-                    }
-                    hasSent = true;
-                    return;
-                }
-                HitResult hitResult = TarBlockUtils.raycastBlocks(range.get());
-                if (hitResult == null || hitResult.getType() != HitResult.Type.BLOCK) {
-                    error("You need to face a block!");
-                    onActivate();
-                    return;
-                }
-
-                BlockHitResult bhr = (BlockHitResult) hitResult;
-
-                FindItemResult obby = InvUtils.find(Items.OBSIDIAN);
-                if (!obby.found()) {
-                    error("No items found!");
-                    onActivate();
-                    return;
-                }
-
-                swap(obby.slot());
-
-                ActionResult result = mc.interactionManager.interactBlock(mc.player, Hand.OFF_HAND, bhr);
-                if (result.isAccepted()) mc.player.swingHand(Hand.OFF_HAND);
-
-                swap(obby.slot());
-
-                stage = Stage.PostWait;
-                hasSent = false;
-            case PostWait:
-                if (!hasSent) {
-                    for (String message : postChat.get()) {
-                        if (!message.isEmpty()) {
-                            ChatUtils.sendPlayerMsg(message, false);
-                        }
-                    }
-                    hasSent = true;
-                    return;
-                }
-
-                onActivate();
+        FindItemResult obby = InvUtils.find(Items.OBSIDIAN);
+        if (!obby.found()) {
+            error("No items found!");
+            this.toggle();
+            return;
         }
+
+        if (!hasSent) {
+            for (String message : preChat.get()) {
+                if (!message.isEmpty()) {
+                    ChatUtils.sendPlayerMsg(message, false);
+                }
+            }
+            hasSent = true;
+            return;
+        }
+
+        HitResult hitResult = TarBlockUtils.raycastBlocks(range.get());
+        if (hitResult == null || hitResult.getType() != HitResult.Type.BLOCK) {
+            error("You need to face a block!");
+            this.toggle();
+            return;
+        }
+
+        BlockHitResult bhr = (BlockHitResult) hitResult;
+
+        swap(obby.slot());
+
+        ActionResult result = mc.interactionManager.interactBlock(mc.player, Hand.OFF_HAND, bhr);
+        if (result.isAccepted()) mc.player.swingHand(Hand.OFF_HAND);
+
+        swap(obby.slot());
+
+        this.toggle();
     }
 
     private void swap(int slot) {
+        if (mc.interactionManager == null || mc.player == null) return;
         mc.interactionManager.clickSlot(mc.player.currentScreenHandler.syncId, SlotUtils.indexToId(slot), 40, SlotActionType.SWAP, mc.player);
     }
-
-    enum Stage {
-        None,
-        PreWait,
-        PostWait
-    }
 }
+
+
+

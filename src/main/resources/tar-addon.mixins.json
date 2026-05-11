@@ -10,5 +10,10 @@
     "ItemStackMixin",
     "LivingEntityMixin",
     "RotationsMixin"
+  ],
+  "client": [
+    "ElementMixin",
+    "HandledScreenAccessor",
+    "InventoryScreenAccessor"
   ]
 }

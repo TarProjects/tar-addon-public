@@ -25,6 +25,7 @@ public class CornerClip extends TarModule {
         double x = vec3d.x + 0.20000000009497754 * (flagX ? -1 : 1);
         double z = vec3d.z + 0.2000000000949811 * (flagZ ? -1 : 1);
 
+        mc.player.setVelocity(0, mc.player.getVelocity().getY(), 0);
         mc.player.setPosition(x, mc.player.getY(), z);
         // Update since otherwise position will only be updated after player turns or moves/20 ticks with no movement...
         sendPacket(new PlayerMoveC2SPacket.PositionAndOnGround(mc.player.getX(), mc.player.getY(), mc.player.getZ(), mc.player.isOnGround(), mc.player.horizontalCollision));

@@ -9,10 +9,12 @@ import meteordevelopment.meteorclient.utils.entity.SortPriority;
 import meteordevelopment.meteorclient.utils.entity.TargetUtils;
 import meteordevelopment.meteorclient.utils.entity.fakeplayer.FakePlayerEntity;
 import meteordevelopment.meteorclient.utils.player.*;
+import meteordevelopment.meteorclient.utils.world.BlockUtils;
 import meteordevelopment.orbit.EventHandler;
 import net.minecraft.block.Blocks;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.Items;
+import net.minecraft.network.packet.c2s.play.PlayerMoveC2SPacket;
 import net.minecraft.screen.slot.SlotActionType;
 import net.minecraft.util.Hand;
 import net.minecraft.util.math.BlockPos;
@@ -155,14 +157,11 @@ public class AutoCEV extends TarModule {
         }
 
 
-        /*if (!HoleUtils.isInHole(target.getBlockPos(), true)) {
+        if (!HoleUtils.isInHole(target.getBlockPos(), true)) {
             target = null;
             onActivate();
             return;
         }
-
-
-         */
 
 
         getBlockPlacePositions(target);
@@ -183,17 +182,22 @@ public class AutoCEV extends TarModule {
                 stage = Stage.PLACE;
                 hasSent = false;
             case PLACE:
-                swapToOffhand(obby.slot());
 
                 boolean placed = false;
                 for (BlockPos pos : placePositions) {
-                    if (TarBlockUtils.place(pos, Hand.OFF_HAND, true, true, false, true, Blocks.OBSIDIAN)) {
+                    TarBlockUtils.InteractRunnable callback = (bhr -> {
+                        swapToOffhand(obby.slot());
+                        float yaw = (float) Rotations.getYaw(bhr.getPos());
+                        float pitch = (float) Rotations.getPitch(bhr.getPos());
+                        sendPacket(new PlayerMoveC2SPacket.Full(mc.player.getEntityPos(), yaw, pitch, mc.player.isOnGround(), mc.player.horizontalCollision));
+                        BlockUtils.interact(bhr, Hand.OFF_HAND, true);
+                        swapToOffhand(obby.slot());
+                    });
+                    if (TarBlockUtils.place(pos, false, true, Blocks.OBSIDIAN, callback)) {
                         placed = true;
                         break;
                     }
                 }
-
-                swapToOffhand(obby.slot());
 
                 if (!placed) {
                     sendPost();

@@ -15,6 +15,7 @@ import org.tarclient.addon.commands.KitCommand;
 import org.tarclient.addon.commands.TPCommand;
 import org.tarclient.addon.modules.*;
 import org.tarclient.addon.themes.TarSettingsTheme;
+import org.tarclient.addon.utils.MioUtils;
 
 import static meteordevelopment.meteorclient.MeteorClient.mc;
 
@@ -82,15 +83,19 @@ public class TarAddon extends MeteorAddon {
         Modules.get().add(new HeadBurrow());
         Modules.get().add(new InventoryFixes());
         Modules.get().add(new KitDeleter());
+        Modules.get().add(new MioCompatibility());
         Modules.get().add(new PearlPhase());
         Modules.get().add(new PhaseFix());
         Modules.get().add(new PlaceObsidian());
         Modules.get().add(new RegearBot());
+        Modules.get().add(new RespawnMessage());
         Modules.get().add(new SelfFill());
         Modules.get().add(new TestFly());
 
         Commands.add(new KitCommand());
         Commands.add(new TPCommand());
+
+        MioUtils.mioCompatibility = Modules.get().get(MioCompatibility.class);
     }
 
     @Override

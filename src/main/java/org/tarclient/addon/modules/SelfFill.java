@@ -15,9 +15,7 @@ import net.minecraft.entity.Entity;
 import net.minecraft.entity.decoration.EndCrystalEntity;
 import net.minecraft.item.BlockItem;
 import net.minecraft.item.ItemStack;
-import net.minecraft.network.packet.c2s.play.HandSwingC2SPacket;
 import net.minecraft.network.packet.c2s.play.PlayerInteractBlockC2SPacket;
-import net.minecraft.network.packet.c2s.play.PlayerInteractEntityC2SPacket;
 import net.minecraft.network.packet.c2s.play.PlayerMoveC2SPacket;
 import net.minecraft.util.Hand;
 import net.minecraft.util.hit.BlockHitResult;
@@ -33,7 +31,7 @@ import org.tarclient.addon.utils.BurrowUtils;
 import java.util.List;
 
 import static org.tarclient.addon.utils.BurrowUtils.checkHead;
-import static org.tarclient.addon.utils.BurrowUtils.getSpecialBlockPos;
+import static org.tarclient.addon.utils.BurrowUtils.getCeiledBlockPos;
 
 public class SelfFill extends TarModule {
     // Le china
@@ -43,6 +41,7 @@ public class SelfFill extends TarModule {
     private final static double minus = 0.08;
 
     private final SettingGroup sgGeneral = this.settings.getDefaultGroup();
+    private final SettingGroup sgAttack = this.settings.createGroup("Attack");
     private final SettingGroup sgBypass = this.settings.createGroup("Bypass");
     private final SettingGroup sgBlocks = this.settings.createGroup("Blocks");
 
@@ -54,28 +53,37 @@ public class SelfFill extends TarModule {
         .build()
     );
 
-    private final Setting<Boolean> attack = sgGeneral.add(new BoolSetting.Builder()
-        .name("attack")
-        .description("Attacks crystals if they are in the way")
-        .defaultValue(true)
-        .visible(() -> !autodisable.get())
-        .build()
-    );
-
-    private final Setting<Boolean> rotate = sgGeneral.add(new BoolSetting.Builder()
-        .name("rotate")
-        .description("Rotates for attacking")
-        .defaultValue(true)
-        .visible(() -> !autodisable.get() && attack.get())
-        .build()
-    );
-
     private final Setting<Integer> cooldown = sgGeneral.add(new IntSetting.Builder()
         .name("cooldown")
         .description("To not burrow multiple times")
-        .defaultValue(15)
+        .defaultValue(3)
         .sliderRange(0, 20)
         .visible(() -> !autodisable.get())
+        .build()
+    );
+
+    /* --- Attack --- */
+
+    private final Setting<Boolean> attack = sgAttack.add(new BoolSetting.Builder()
+        .name("attack")
+        .description("Attacks crystals if they are in the way")
+        .defaultValue(true)
+        .build()
+    );
+
+    private final Setting<Boolean> rotate = sgAttack.add(new BoolSetting.Builder()
+        .name("rotate")
+        .description("Rotates for attacking")
+        .defaultValue(true)
+        .build()
+    );
+
+
+    private final Setting<Integer> attackCooldown = sgAttack.add(new IntSetting.Builder()
+        .name("attack-cooldown")
+        .description("Prevents attacking multiple times")
+        .defaultValue(1)
+        .sliderRange(0, 20)
         .build()
     );
 
@@ -126,6 +134,7 @@ public class SelfFill extends TarModule {
 
     BlockPos start;
     int ticks;
+    int attackTicks;
 
     public SelfFill() {
         super(TarAddon.CATEGORY, "self-fill", "Sets you inside a block. This module is currently designed for crystalpvp.cc!");
@@ -137,8 +146,9 @@ public class SelfFill extends TarModule {
             this.toggle();
             return;
         }
-        start = getSpecialBlockPos();
+        start = getCeiledBlockPos();
         ticks = 0;
+        attackTicks = 0;
 
         if (autodisable.get()) {
             FindItemResult block = findPlaceable();
@@ -157,7 +167,7 @@ public class SelfFill extends TarModule {
 
     @EventHandler
     private void onTick(TickEvent.Pre event) {
-        if (!Utils.canUpdate() || autodisable.get() || !getSpecialBlockPos().equals(start)) {
+        if (!Utils.canUpdate() || autodisable.get() || !getCeiledBlockPos().equals(start)) {
             this.toggle();
             return;
         }
@@ -169,26 +179,35 @@ public class SelfFill extends TarModule {
             return;
         }
 
+        if (attack.get()) {
+            if (attackTicks > 0) {
+                attackTicks--;
+            } else {
+                boolean attacked = false;
+                for (Entity entity : mc.world.getEntities()) {
+                    if (!(entity instanceof EndCrystalEntity)) continue;
+                    if (Box.from(new BlockBox(getCeiledBlockPos())).intersects(entity.getBoundingBox())) {
+                        if (rotate.get()) {
+                            Rotations.rotate(Rotations.getYaw(entity), Rotations.getPitch(entity),
+                                () -> attack(entity));
+                        } else {
+                            attack(entity);
+                        }
+
+                        attacked = true;
+                    }
+                }
+
+                if (attacked) {
+                    attackTicks = attackCooldown.get();
+                    return;
+                }
+            }
+        }
+
         if (ticks > 0) {
             ticks--;
             return;
-        }
-
-
-        if (attack.get()) {
-            for (Entity entity : mc.world.getEntities()) {
-                if (!(entity instanceof EndCrystalEntity)) continue;
-                if (Box.from(new BlockBox(getSpecialBlockPos())).intersects(entity.getBoundingBox())) {
-                    if (rotate.get()) {
-                        Rotations.rotate(Rotations.getPitch(entity), Rotations.getYaw(entity),
-                            () -> sendPacket(PlayerInteractEntityC2SPacket.attack(entity, mc.player.isSneaking())));
-                    } else {
-                        sendPacket(PlayerInteractEntityC2SPacket.attack(entity, mc.player.isSneaking()));
-                    }
-
-                    sendPacket(new HandSwingC2SPacket(Hand.MAIN_HAND));
-                }
-            }
         }
 
         if (!mc.player.isOnGround() || !canBurrow() || !checkHead()) {
@@ -196,9 +215,16 @@ public class SelfFill extends TarModule {
         }
 
         tryBurrow(block.slot());
-        info("Burrowed!");
 
         ticks = cooldown.get();
+    }
+
+
+    private void attack(Entity target) {
+        if (mc.interactionManager == null || mc.player == null) return;
+
+        mc.interactionManager.attackEntity(mc.player, target);
+        mc.player.swingHand(Hand.MAIN_HAND);
     }
 
     public void tryBurrow(int slot) {
@@ -251,7 +277,7 @@ public class SelfFill extends TarModule {
         }
 
         InvUtils.swap(slot, true);
-        sendPacket(new PlayerInteractBlockC2SPacket(Hand.MAIN_HAND, new BlockHitResult(getSpecialBlockPos().down().toCenterPos(), Direction.UP, getSpecialBlockPos().down(), false), 0));
+        sendPacket(new PlayerInteractBlockC2SPacket(Hand.MAIN_HAND, new BlockHitResult(getCeiledBlockPos().down().toCenterPos(), Direction.UP, getCeiledBlockPos().down(), false), 0));
         InvUtils.swapBack();
 
         sendPacket(new PlayerMoveC2SPacket.PositionAndOnGround(mc.player.getX(), mc.player.getY() + y + offset.get(), mc.player.getZ(), ongroundtwo.get(), mc.player.horizontalCollision));
@@ -271,7 +297,7 @@ public class SelfFill extends TarModule {
     }
 
     private boolean canBurrow() {
-        BlockPos pos = getSpecialBlockPos();
+        BlockPos pos = getCeiledBlockPos();
         if (!mc.world.getBlockState(pos).isReplaceable()) return false;
         if (!canPlace(Blocks.OBSIDIAN.getDefaultState(), pos, ShapeContext.absent())) return false;
         if (mc.world.getBlockState(pos.down()).isReplaceable()) return false;

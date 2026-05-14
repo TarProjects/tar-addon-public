@@ -50,10 +50,7 @@ public class TarBlockUtils {
 
         BlockHitResult bhr = new BlockHitResult(hitPos, side.getOpposite(), neighbour, false);
 
-
         callback.run(bhr);
-
-        System.out.println(hitPos);
 
         return true;
     }

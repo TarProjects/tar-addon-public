@@ -19,6 +19,7 @@ import org.tarclient.addon.TarModule;
 import org.tarclient.addon.events.PlayerJumpEvent;
 
 import static org.tarclient.addon.utils.BurrowUtils.*;
+import static org.tarclient.addon.utils.MioUtils.toggleModule;
 
 public class PhaseFix extends TarModule {
     private final SettingGroup sgGeneral = this.settings.getDefaultGroup();
@@ -42,7 +43,7 @@ public class PhaseFix extends TarModule {
         .name("fly-speed")
         .description("The speed that you fly at")
         .defaultValue(0.03)
-        .sliderRange(0, 10)
+        .sliderRange(0, 3)
         .visible(fly::get)
         .build()
     );
@@ -51,7 +52,15 @@ public class PhaseFix extends TarModule {
         .name("wiggle")
         .description("Wiggles you if you dont move")
         .defaultValue(true)
-        .visible(fly::get)
+        .build()
+    );
+
+    private final Setting<Double> wiggleSpeed = sgGeneral.add(new DoubleSetting.Builder()
+        .name("wiggle-speed")
+        .description("The speed that you wiggle at")
+        .defaultValue(0.03)
+        .sliderRange(0, 1)
+        .visible(wiggle::get)
         .build()
     );
 
@@ -59,6 +68,13 @@ public class PhaseFix extends TarModule {
         .name("v-clip-jump")
         .description("VClips when jumping inside phase.")
         .defaultValue(true)
+        .build()
+    );
+
+    private final Setting<String> vClipDisable = sgGeneral.add(new StringSetting.Builder()
+        .name("v-clip-disable")
+        .description("Which module to disable on vclip")
+        .defaultValue("FeetPlace")
         .build()
     );
 
@@ -86,38 +102,32 @@ public class PhaseFix extends TarModule {
     @EventHandler
     private void onMove(PlayerMoveEvent event) {
         if (!Utils.canUpdate() || isNotSurvival()) return;
+        if (!isBurrowed()) return;
 
-        if (isBurrowed() && fly.get()) {
-            Vec3d vel = PlayerUtils.getHorizontalVelocity(flySpeed.get());
+        Vec3d velocity = event.movement;
 
-            if (vel.length() == 0 && wiggle.get()) {
-                // NOT MOVING; WIGGLE
-                Vec3d blockPos = getSpecialBlockPos().toCenterPos();
-
-                double dx = blockPos.getX() - mc.player.getX();
-                double dz = blockPos.getZ() - mc.player.getZ();
-
-                // 2d length
-                double len = Math.sqrt(dx * dx + dz * dz);
-                double x;
-                double z;
-                if (len < 1e-5) {
-                    x = 1;
-                    z = 0;
-                } else {
-                    x = dx / len;
-                    z = dz / len;
-                }
-
-                vel = new Vec3d(x, 0, z).multiply(flySpeed.get() / 20);
-
-                if (wiggleBack) {
-                    vel = vel.negate();
-                }
-            }
-
-            ((IVec3d) event.movement).meteor$set(vel.x, event.movement.y, vel.z);
+        if (fly.get()) {
+            Vec3d horizontal = PlayerUtils.getHorizontalVelocity(flySpeed.get());
+            velocity = new Vec3d(horizontal.x, velocity.y, horizontal.z);
         }
+
+        if (wiggle.get() && velocity.horizontalLength() == 0) {
+            // NOT MOVING; WIGGLE
+            Vec3d target = getCeiledBlockPos().toCenterPos();
+            double dx = target.x - mc.player.getX();
+            double dz = target.z - mc.player.getZ();
+            double len = Math.hypot(dx, dz);
+
+            double dirX = len < 1e-5 ? 1 : dx / len;
+            double dirZ = len < 1e-5 ? 0 : dz / len;
+            double speed = wiggleSpeed.get() / 20;
+
+            if (wiggleBack) speed = -speed;
+
+            velocity = new Vec3d(dirX * speed, velocity.y, dirZ * speed);
+        }
+
+        ((IVec3d) event.movement).meteor$set(velocity.x, velocity.y, velocity.z);
     }
 
     @EventHandler
@@ -141,10 +151,9 @@ public class PhaseFix extends TarModule {
         }
 
         if (isBurrowed() && checkHead()) {
-            delay = vClipJumpDelay.get();
             event.cancel();
 
-            BlockPos blockPos = getSpecialBlockPos();
+            BlockPos blockPos = getCeiledBlockPos();
 
             Block current = mc.world.getBlockState(blockPos).getBlock();
             double offset = findBlockHeight(current);
@@ -153,6 +162,12 @@ public class PhaseFix extends TarModule {
             mc.player.setPosition(mc.player.getX(), y, mc.player.getZ());
             // Packet will be sent on tick anyways, stop flaggin with this?
             sendPacket(new PlayerMoveC2SPacket.PositionAndOnGround(mc.player.getX(), mc.player.getY(), mc.player.getZ(), false, mc.player.horizontalCollision));
+
+            if (!vClipDisable.get().isEmpty()) {
+                toggleModule(vClipDisable.get(), false);
+            }
+
+            delay = vClipJumpDelay.get();
         }
     }
 

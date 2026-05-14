@@ -1,9 +1,11 @@
 package org.tarclient.addon.modules;
 
 import meteordevelopment.meteorclient.events.world.TickEvent;
-import meteordevelopment.meteorclient.settings.*;
+import meteordevelopment.meteorclient.settings.BoolSetting;
+import meteordevelopment.meteorclient.settings.DoubleSetting;
+import meteordevelopment.meteorclient.settings.Setting;
+import meteordevelopment.meteorclient.settings.SettingGroup;
 import meteordevelopment.meteorclient.utils.Utils;
-import meteordevelopment.meteorclient.utils.player.ChatUtils;
 import meteordevelopment.meteorclient.utils.player.FindItemResult;
 import meteordevelopment.meteorclient.utils.player.InvUtils;
 import meteordevelopment.meteorclient.utils.player.SlotUtils;
@@ -14,11 +16,14 @@ import net.minecraft.util.ActionResult;
 import net.minecraft.util.Hand;
 import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.hit.HitResult;
+import net.minecraft.util.math.BlockPos;
 import org.tarclient.addon.TarAddon;
 import org.tarclient.addon.TarModule;
+import org.tarclient.addon.utils.MioUtils;
 import org.tarclient.addon.utils.TarBlockUtils;
 
-import java.util.List;
+import static org.tarclient.addon.utils.MiningUtils.attackWithCompatibility;
+import static org.tarclient.addon.utils.MiningUtils.getLastBreaking;
 
 public class PlaceObsidian extends TarModule {
     private final SettingGroup sgGeneral = this.settings.getDefaultGroup();
@@ -31,17 +36,10 @@ public class PlaceObsidian extends TarModule {
         .build()
     );
 
-    private final Setting<List<String>> preChat = sgGeneral.add(new StringListSetting.Builder()
-        .name("pre-chat")
-        .description("Chat commands to send each tick in its own line")
-        .defaultValue("")
-        .build()
-    );
-
-    private final Setting<List<String>> postChat = sgGeneral.add(new StringListSetting.Builder()
-        .name("post-chat")
-        .description("Chat commands to send each tick in its own line")
-        .defaultValue("")
+    private final Setting<Boolean> clickBlock = sgGeneral.add(new BoolSetting.Builder()
+        .name("click-block")
+        .description("If should click block that is being placed")
+        .defaultValue(true)
         .build()
     );
 
@@ -58,11 +56,7 @@ public class PlaceObsidian extends TarModule {
 
     @Override
     public void onDeactivate() {
-        for (String message : postChat.get()) {
-            if (!message.isEmpty()) {
-                ChatUtils.sendPlayerMsg(message, false);
-            }
-        }
+        MioUtils.enableAttackingModules();
     }
 
     @EventHandler
@@ -77,11 +71,7 @@ public class PlaceObsidian extends TarModule {
         }
 
         if (!hasSent) {
-            for (String message : preChat.get()) {
-                if (!message.isEmpty()) {
-                    ChatUtils.sendPlayerMsg(message, false);
-                }
-            }
+            MioUtils.disableAttackingModules();
             hasSent = true;
             return;
         }
@@ -94,6 +84,12 @@ public class PlaceObsidian extends TarModule {
         }
 
         BlockHitResult bhr = (BlockHitResult) hitResult;
+
+        BlockPos target = bhr.getBlockPos().offset(bhr.getSide());
+        BlockPos lastBroken = getLastBreaking();
+        if (clickBlock.get() && (lastBroken == null || !getLastBreaking().equals(target))) {
+            attackWithCompatibility(target, bhr.getSide());
+        }
 
         swap(obby.slot());
 

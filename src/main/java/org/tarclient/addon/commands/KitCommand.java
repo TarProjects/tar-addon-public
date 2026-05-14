@@ -4,13 +4,9 @@ import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
-import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import meteordevelopment.meteorclient.commands.Command;
 import net.minecraft.command.CommandSource;
 import net.minecraft.command.argument.ItemStackArgument;
-import net.minecraft.command.argument.ItemStackArgumentType;
-import net.minecraft.item.Item;
-import net.minecraft.registry.Registries;
 
 public class KitCommand extends Command {
     private static final String KITCHARS = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_";
@@ -36,23 +32,15 @@ public class KitCommand extends Command {
                 .executes(this::createKitInternal)
                 .then(argument("prefix", StringArgumentType.string())
                     .executes(this::createKitInternal)
-                    .then(argument("item", ItemStackArgumentType.itemStack(REGISTRY_ACCESS))
+                    .then(argument("item", StringArgumentType.string())
                         .executes(this::createKitInternal)))));
     }
 
     private int createKitInternal(CommandContext<CommandSource> context) {
         int length = getOptionalArgument(context, "length", MAX_KIT_LENGTH);
         String prefix = getOptionalArgument(context, "prefix", "");
-        ItemStackArgument itemStackArgument = getOptionalArgument(context, "item", PLACEHOLDER_ARG);
+        String itemName = getOptionalArgument(context, "item", "");
 
-        String itemName = "";
-        if (itemStackArgument != PLACEHOLDER_ARG) {
-            try {
-                Item item = itemStackArgument.createStack(1, false).getItem();
-                itemName = Registries.ITEM.getId(item).getPath();
-            } catch (CommandSyntaxException ignored) {
-            }
-        }
         createKit(length, prefix, itemName);
         return SINGLE_SUCCESS;
     }

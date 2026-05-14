@@ -53,11 +53,11 @@ public class BurrowUtils {
     public static boolean isBurrowed() {
         if (mc.world == null || mc.player == null) return false;
 
-        Block current = mc.world.getBlockState(getSpecialBlockPos()).getBlock();
+        Block current = mc.world.getBlockState(getCeiledBlockPos()).getBlock();
         return BURROW_BLOCKS.contains(current);
     }
 
-    public static BlockPos getSpecialBlockPos() {
+    public static BlockPos getCeiledBlockPos() {
         if (mc.player == null) return BlockPos.ORIGIN;
         int x = MathHelper.floor(mc.player.getX());
         int y = MathHelper.ceil(mc.player.getY());

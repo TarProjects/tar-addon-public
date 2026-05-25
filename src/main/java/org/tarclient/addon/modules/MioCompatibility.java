@@ -31,6 +31,29 @@ public class MioCompatibility extends TarModule {
         .build()
     );
 
+    public final Setting<Double> packetMineDamage = sgGeneral.add(new DoubleSetting.Builder()
+        .name("packetmine-damage")
+        .description("Breaking damage")
+        .defaultValue(1)
+        .sliderRange(0, 1)
+        .build()
+    );
+
+    public final Setting<Boolean> assumeLastBlockState = sgGeneral.add(new BoolSetting.Builder()
+        .name("assume-last-blockstate")
+        .description("Assumes last blockstate if air. Otherwise default to obsidian")
+        .defaultValue(true)
+        .build()
+    );
+
+    public final Setting<String> toggleAutoMine = sgGeneral.add(new StringSetting.Builder()
+        .name("toggle-automine")
+        .description("How to toggle automine")
+        .defaultValue("AutoMine")
+        .wide()
+        .build()
+    );
+
     public final Setting<Boolean> ignoreNotif = sgGeneral.add(new BoolSetting.Builder()
         .name("ignore-notifications")
         .description("Ignores notifications sent to the player")

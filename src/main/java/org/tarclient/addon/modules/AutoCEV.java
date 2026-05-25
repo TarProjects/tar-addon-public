@@ -1,7 +1,5 @@
 package org.tarclient.addon.modules;
 
-import meteordevelopment.meteorclient.events.entity.player.StartBreakingBlockEvent;
-import meteordevelopment.meteorclient.events.packets.PacketEvent;
 import meteordevelopment.meteorclient.events.render.Render3DEvent;
 import meteordevelopment.meteorclient.events.world.TickEvent;
 import meteordevelopment.meteorclient.renderer.ShapeMode;
@@ -13,6 +11,7 @@ import meteordevelopment.meteorclient.utils.entity.SortPriority;
 import meteordevelopment.meteorclient.utils.entity.TargetUtils;
 import meteordevelopment.meteorclient.utils.entity.fakeplayer.FakePlayerEntity;
 import meteordevelopment.meteorclient.utils.player.*;
+import meteordevelopment.meteorclient.utils.render.color.Color;
 import meteordevelopment.meteorclient.utils.render.color.SettingColor;
 import meteordevelopment.meteorclient.utils.world.BlockUtils;
 import meteordevelopment.orbit.EventHandler;
@@ -22,7 +21,6 @@ import net.minecraft.entity.decoration.EndCrystalEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.Items;
 import net.minecraft.network.packet.c2s.play.PlayerMoveC2SPacket;
-import net.minecraft.network.packet.c2s.play.UpdateSelectedSlotC2SPacket;
 import net.minecraft.screen.slot.SlotActionType;
 import net.minecraft.util.Hand;
 import net.minecraft.util.math.BlockBox;
@@ -32,30 +30,22 @@ import net.minecraft.util.math.Direction;
 import net.minecraft.world.GameMode;
 import org.tarclient.addon.TarAddon;
 import org.tarclient.addon.TarModule;
+import org.tarclient.addon.events.ClickBlockEvent;
+import org.tarclient.addon.utils.ColorUtils;
 import org.tarclient.addon.utils.HoleUtils;
 import org.tarclient.addon.utils.TarBlockUtils;
 
-import static org.tarclient.addon.utils.MiningUtils.attackWithCompatibility;
-import static org.tarclient.addon.utils.MiningUtils.getLastBreaking;
-import static org.tarclient.addon.utils.MioUtils.disableAttackingModules;
-import static org.tarclient.addon.utils.MioUtils.enableAttackingModules;
+import static org.tarclient.addon.utils.MiningUtils.*;
+import static org.tarclient.addon.utils.MioUtils.*;
 
 public class AutoCEV extends TarModule {
     private final SettingGroup sgGeneral = this.settings.getDefaultGroup();
     private final SettingGroup sgDelay = this.settings.createGroup("Delay");
-    private static final Direction[] DIRECTIONS = {Direction.UP, Direction.NORTH, Direction.EAST, Direction.SOUTH, Direction.WEST};
+    private final SettingGroup sgRender = settings.createGroup("Render");
 
     private final Setting<Double> targetRange = sgGeneral.add(new DoubleSetting.Builder()
         .name("target-range")
         .description("Maximum distance of target")
-        .defaultValue(5.2)
-        .sliderRange(0, 6)
-        .build()
-    );
-
-    private final Setting<Double> range = sgGeneral.add(new DoubleSetting.Builder()
-        .name("range")
-        .description("Maximum distance of block placements")
         .defaultValue(5.2)
         .sliderRange(0, 6)
         .build()
@@ -67,43 +57,55 @@ public class AutoCEV extends TarModule {
         .defaultValue(SortPriority.LowestDistance)
         .build()
     );
-    private final SettingGroup sgRender = settings.createGroup("Render");
-    private final Setting<Integer> placeDelay = sgDelay.add(new IntSetting.Builder()
-        .name("place-delay")
-        .description("Block placement delay in ticks")
-        .defaultValue(80)
-        .sliderRange(0, 100)
+
+    private final Setting<Double> range = sgGeneral.add(new DoubleSetting.Builder()
+        .name("range")
+        .description("Maximum distance of block placements")
+        .defaultValue(5.2)
+        .sliderRange(0, 6)
         .build()
     );
-    private final Setting<Integer> failDelay = sgDelay.add(new IntSetting.Builder()
-        .name("fail-delay")
-        .description("Block placement delay in ticks")
-        .defaultValue(20)
-        .sliderRange(0, 100)
+
+    private final Setting<Double> minHP = sgGeneral.add(new DoubleSetting.Builder()
+        .name("min-health")
+        .description("Minimum health of this module")
+        .defaultValue(10)
+        .sliderRange(5, 30)
         .build()
     );
-    private final Setting<Integer> globalDelay = sgDelay.add(new IntSetting.Builder()
-        .name("global-delay")
-        .description("Global delay before re-search and everything")
-        .defaultValue(5)
-        .sliderRange(0, 10)
+
+    private final Setting<Boolean> waitForCrystal = sgGeneral.add(new BoolSetting.Builder()
+        .name("wait-for-crystal")
+        .description("Waits for offhand crystal")
+        .defaultValue(true)
         .build()
     );
+
     /* --- Delay --- */
-    private final Setting<Integer> preDelay = sgDelay.add(new IntSetting.Builder()
-        .name("pre-delay")
-        .description("The delay before block place")
+    private final Setting<Integer> cooldown = sgDelay.add(new IntSetting.Builder()
+        .name("cooldown")
+        .description("The global cooldown")
+        .defaultValue(10)
+        .sliderRange(0, 20)
+        .build()
+    );
+
+    private final Setting<Integer> resetCooldown = sgDelay.add(new IntSetting.Builder()
+        .name("reset-cooldown")
+        .description("The global cooldown on reset")
+        .defaultValue(2)
+        .sliderRange(0, 20)
+        .build()
+    );
+
+    private final Setting<Double> placeCondition = sgDelay.add(new DoubleSetting.Builder()
+        .name("place-condition")
+        .description("How much damage to block before place")
         .defaultValue(1)
-        .sliderRange(0, 20)
+        .sliderRange(0, 1)
         .build()
     );
-    private final Setting<Integer> postDelay = sgDelay.add(new IntSetting.Builder()
-        .name("post-delay")
-        .description("The delay after placing block")
-        .defaultValue(0)
-        .sliderRange(0, 20)
-        .build()
-    );
+
     /* --- Render --- */
     private final Setting<ShapeMode> shapeMode = sgRender.add(new EnumSetting.Builder<ShapeMode>()
         .name("shape-mode")
@@ -111,25 +113,38 @@ public class AutoCEV extends TarModule {
         .defaultValue(ShapeMode.Both)
         .build()
     );
-    private final Setting<SettingColor> sideColor = sgRender.add(new ColorSetting.Builder()
-        .name("side-color")
+
+    private final Setting<SettingColor> startSideColor = sgRender.add(new ColorSetting.Builder()
+        .name("start-side-color")
         .description("The side color of the target box rendering.")
         .defaultValue(new SettingColor(255, 0, 0, 70))
         .build()
     );
-    private final Setting<SettingColor> lineColor = sgRender.add(new ColorSetting.Builder()
-        .name("line-color")
+
+    private final Setting<SettingColor> startLineColor = sgRender.add(new ColorSetting.Builder()
+        .name("start-line-color")
         .description("The line color of the target box rendering.")
         .defaultValue(new SettingColor(255, 0, 0))
         .build()
     );
-    private BlockPos startPos = null;
-    private BlockPos placePosition = null;
+
+    private final Setting<SettingColor> endSideColor = sgRender.add(new ColorSetting.Builder()
+        .name("end-side-color")
+        .description("The side color of the target box rendering.")
+        .defaultValue(new SettingColor(255, 0, 0, 70))
+        .build()
+    );
+
+    private final Setting<SettingColor> endLineColor = sgRender.add(new ColorSetting.Builder()
+        .name("end-line-color")
+        .description("The line color of the target box rendering.")
+        .defaultValue(new SettingColor(255, 0, 0))
+        .build()
+    );
+
+    private int globalCooldown = 0;
     private PlayerEntity target;
-    private int globalCooldown;
-    private int cooldown;
-    private Stage stage = Stage.PRE;
-    private int stageTicks = 0;
+    private int lastBlockY = 0;
 
     public AutoCEV() {
         super(TarAddon.CATEGORY, "auto-cev", "Cevs opponents");
@@ -143,75 +158,31 @@ public class AutoCEV extends TarModule {
         }
         reset();
 
-        startPos = mc.player.getBlockPos();
-        placePosition = null;
-        target = null;
+
+        toggleAutoMine(false);
+        lastBlockY = mc.player.getBlockY();
     }
 
     @Override
     public void onDeactivate() {
         reset();
+        toggleAutoMine(true);
     }
 
     private void reset() {
-        globalCooldown = 0;
-        cooldown = 0;
-        setStageTo(Stage.PRE);
-
-        enableAttackingModules();
+        target = null;
+        globalCooldown = resetCooldown.get();
     }
 
-    private void fail() {
+    @EventHandler
+    private void onClickBlock(ClickBlockEvent event) {
         reset();
-        placePosition = null;
-        cooldown = failDelay.get();
-        globalCooldown = globalDelay.get();
-    }
-
-    private void successDelay() {
-        cooldown = placeDelay.get();
-        globalCooldown = globalDelay.get();
-    }
-
-    private void setStageTo(Stage stage) {
-        this.stage = stage;
-        stageTicks = 0;
-    }
-
-    @EventHandler
-    private void onRender(Render3DEvent event) {
-        if (placePosition != null) {
-            event.renderer.box(placePosition, sideColor.get(), lineColor.get(), shapeMode.get(), 0);
-        }
-    }
-
-    @EventHandler
-    private void onBlockAttack(StartBreakingBlockEvent event) {
-        if (placePosition != null && !event.blockPos.equals(placePosition)) {
-            // re-search placeposition on tickpre
-            placePosition = null;
-            cooldown = 0;
-        }
-    }
-
-    @EventHandler
-    private void onSlotSwitch(PacketEvent.Send event) {
-        if (event.packet instanceof UpdateSelectedSlotC2SPacket) {
-            info("Switched item, waiting delay");
-            cooldown = placeDelay.get();
-        }
     }
 
     @EventHandler
     private void onTickPre(TickEvent.Pre event) {
         if (!Utils.canUpdate()) return;
         if (mc.player == null) return;
-
-        if (!startPos.equals(mc.player.getBlockPos())) {
-            info("Moved, disabling!");
-            this.toggle();
-            return;
-        }
 
         FindItemResult obby = InvUtils.find(Items.OBSIDIAN);
         if (!obby.found()) {
@@ -220,10 +191,13 @@ public class AutoCEV extends TarModule {
             return;
         }
 
-        if (globalCooldown > 0) {
-            globalCooldown--;
+        if (mc.player.getBlockY() > lastBlockY) {
+            info("Moved vertically, disabling");
+            this.toggle();
             return;
         }
+
+        lastBlockY = mc.player.getBlockY();
 
         if (TargetUtils.isBadTarget(target, targetRange.get())) {
             target = getTargetInHole(targetRange.get(), priority.get());
@@ -234,111 +208,116 @@ public class AutoCEV extends TarModule {
         }
 
         if (!HoleUtils.isInHole(target.getBlockPos(), true)) {
-            target = null;
             reset();
             return;
         }
 
-
-        placePosition = getBlockPlacePosition(target);
-        if (placePosition == null) {
-            fail();
+        BlockPos breaking = getBreakingBlockPos();
+        if (breaking == null || !isValidPlacePosition(breaking) || !isTargetCevPosition(breaking, target)) {
+            breaking = findCevPos(target);
+            if (breaking != null) {
+                attackWithCompatibility(breaking, Direction.UP);
+            }
             return;
         }
 
-        BlockPos lastBreaking = getLastBreaking();
-        if (lastBreaking == null || !lastBreaking.equals(placePosition)) {
-            reset();
-            successDelay();
-
-            attackWithCompatibility(placePosition, Direction.UP);
+        if (globalCooldown > 0) {
+            globalCooldown--;
             return;
         }
 
 
         boolean intersects = false;
         for (Entity entity : mc.world.getEntities()) {
-            if (Box.from(new BlockBox(placePosition)).intersects(entity.getBoundingBox())) {
+            if (!(entity instanceof EndCrystalEntity)) continue;
+            if (Box.from(new BlockBox(breaking)).intersects(entity.getBoundingBox()) ||
+                Box.from(new BlockBox(breaking.up())).intersects(entity.getBoundingBox())) {
+
                 intersects = true;
-                if (!(entity instanceof EndCrystalEntity)) continue;
                 Rotations.rotate(Rotations.getYaw(entity), Rotations.getPitch(entity), () -> attack(entity));
             }
         }
 
-        if (cooldown > 0) {
-            cooldown--;
-            return;
-        }
-
         if (intersects) {
+            reset();
             return;
         }
 
-        switch (stage) {
-            case PRE -> {
-                if (stageTicks == 0) disableAttackingModules();
-
-                if (stageTicks >= preDelay.get()) {
-                    setStageTo(Stage.PLACE);
-                    return;
-                }
-                stageTicks++;
-            }
-            case PLACE -> {
-                TarBlockUtils.InteractRunnable callback = (bhr -> {
-                    float yaw = (float) Rotations.getYaw(bhr.getPos());
-                    float pitch = (float) Rotations.getPitch(bhr.getPos());
-                    sendPacket(new PlayerMoveC2SPacket.Full(mc.player.getEntityPos(), yaw, pitch, mc.player.isOnGround(), mc.player.horizontalCollision));
-
-                    swapToOffhand(obby.slot());
-                    BlockUtils.interact(bhr, Hand.OFF_HAND, true);
-                    swapToOffhand(obby.slot());
-                });
-
-
-                if (TarBlockUtils.place(placePosition, false, true, Blocks.OBSIDIAN, callback)) {
-                    // advance stage
-                    setStageTo(Stage.POST);
-                } else {
-                    // will be cleared to pre on reset()
-                    fail();
-                }
-            }
-            case POST -> {
-                if (stageTicks >= postDelay.get()) {
-                    enableAttackingModules();
-                    reset();
-                    successDelay();
-                    return;
-                }
-                stageTicks++;
-            }
+        double lastBreakingProgress = getBreakingProgress(Blocks.OBSIDIAN.getDefaultState());
+        if (lastBreakingProgress < placeCondition.get()) {
+            return;
         }
+
+        if (mc.player.getHealth() < minHP.get()) {
+            return;
+        }
+
+        if (mc.player.getOffHandStack().getItem() != Items.END_CRYSTAL && waitForCrystal.get()) {
+            return;
+        }
+
+        TarBlockUtils.InteractRunnable callback = (bhr -> {
+            float yaw = (float) Rotations.getYaw(bhr.getPos());
+            float pitch = (float) Rotations.getPitch(bhr.getPos());
+            sendPacket(new PlayerMoveC2SPacket.Full(mc.player.getEntityPos(), yaw, pitch, mc.player.isOnGround(), mc.player.horizontalCollision));
+
+            swap(obby.slot());
+            BlockUtils.interact(bhr, Hand.MAIN_HAND, true);
+            swap(obby.slot());
+        });
+
+
+        if (!TarBlockUtils.place(breaking, false, true, Blocks.OBSIDIAN, callback)) {
+            reset();
+            return;
+        }
+
+        globalCooldown = cooldown.get();
     }
 
-    // Deterministic method to get optimal block place position
-    private BlockPos getBlockPlacePosition(PlayerEntity target) {
+    private BlockPos findCevPos(PlayerEntity target) {
         if (mc.player == null) return null;
 
         BlockPos center = target.getBlockPos().up();
-        for (Direction direction : DIRECTIONS) {
+
+        for (Direction direction : Direction.values()) {
+            if (direction == Direction.DOWN) continue;
             BlockPos pos = center.offset(direction);
             if (mc.player.squaredDistanceTo(pos.toCenterPos()) > range.get() * range.get()) continue;
-            if (!isValidPlacePos(pos)) continue;
+            if (!isValidPlacePosition(pos)) continue;
             return pos;
         }
         return null;
     }
 
-    private boolean isValidPlacePos(BlockPos pos) {
-        if (mc.world == null) return false;
+    private boolean isValidPlacePosition(BlockPos pos) {
+        if (mc.player == null) return false;
 
         Direction placeSide = BlockUtils.getPlaceSide(pos);
         if (placeSide == null) return false;
 
+        if (mc.player.squaredDistanceTo(pos.toCenterPos()) > range.get() * range.get()) return false;
+        return isValidCevPosition(pos);
+    }
+
+    private boolean isValidCevPosition(BlockPos pos) {
+        if (mc.world == null) return false;
+
         BlockPos up = pos.up();
-        boolean isBlockValid = mc.world.getBlockState(pos).isAir() || mc.world.getBlockState(pos).getBlock() == Blocks.OBSIDIAN;
-        return isBlockValid && mc.world.getBlockState(up).isAir();
+        boolean isBlockStateValid = mc.world.getBlockState(pos).isAir() || mc.world.getBlockState(pos).getBlock() == Blocks.OBSIDIAN;
+        return !collidesWithPlayer(pos) && isBlockStateValid && mc.world.getBlockState(up).isAir();
+    }
+
+    private boolean isTargetCevPosition(BlockPos pos, Entity target) {
+        BlockPos center = target.getBlockPos().up();
+
+        for (Direction direction : Direction.values()) {
+            if (direction == Direction.DOWN) continue;
+
+            if (pos.equals(center.offset(direction))) return true;
+        }
+
+        return pos.equals(center.up(2));
     }
 
     private PlayerEntity getTargetInHole(double range, SortPriority priority) {
@@ -352,12 +331,22 @@ public class AutoCEV extends TarModule {
             if (!HoleUtils.isInHole(player.getBlockPos(), true)) return false;
             return EntityUtils.getGameMode(player) == GameMode.SURVIVAL;
         }, priority);
-
     }
 
-    private void swapToOffhand(int slot) {
+    private boolean collidesWithPlayer(BlockPos pos) {
+        if (mc.world == null) return false;
+        for (Entity entity : mc.world.getEntities()) {
+            if (!(entity instanceof PlayerEntity)) continue;
+            if (Box.from(new BlockBox(pos)).intersects(entity.getBoundingBox())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private void swap(int slot) {
         if (mc.interactionManager == null || mc.player == null) return;
-        mc.interactionManager.clickSlot(mc.player.currentScreenHandler.syncId, SlotUtils.indexToId(slot), 40, SlotActionType.SWAP, mc.player);
+        mc.interactionManager.clickSlot(mc.player.currentScreenHandler.syncId, SlotUtils.indexToId(slot), mc.player.getInventory().getSelectedSlot(), SlotActionType.SWAP, mc.player);
     }
 
     private void attack(Entity target) {
@@ -365,11 +354,5 @@ public class AutoCEV extends TarModule {
 
         mc.interactionManager.attackEntity(mc.player, target);
         mc.player.swingHand(Hand.MAIN_HAND);
-    }
-
-    private enum Stage {
-        PRE,
-        PLACE,
-        POST
     }
 }

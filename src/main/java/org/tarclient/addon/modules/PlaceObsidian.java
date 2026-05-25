@@ -23,7 +23,7 @@ import org.tarclient.addon.utils.MioUtils;
 import org.tarclient.addon.utils.TarBlockUtils;
 
 import static org.tarclient.addon.utils.MiningUtils.attackWithCompatibility;
-import static org.tarclient.addon.utils.MiningUtils.getLastBreaking;
+import static org.tarclient.addon.utils.MiningUtils.getBreakingBlockPos;
 
 public class PlaceObsidian extends TarModule {
     private final SettingGroup sgGeneral = this.settings.getDefaultGroup();
@@ -86,8 +86,8 @@ public class PlaceObsidian extends TarModule {
         BlockHitResult bhr = (BlockHitResult) hitResult;
 
         BlockPos target = bhr.getBlockPos().offset(bhr.getSide());
-        BlockPos lastBroken = getLastBreaking();
-        if (clickBlock.get() && (lastBroken == null || !getLastBreaking().equals(target))) {
+        BlockPos lastBroken = getBreakingBlockPos();
+        if (clickBlock.get() && (lastBroken == null || !getBreakingBlockPos().equals(target))) {
             attackWithCompatibility(target, bhr.getSide());
         }
 

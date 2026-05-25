@@ -1,8 +1,16 @@
 package org.tarclient.addon.utils;
 
+import meteordevelopment.meteorclient.utils.Utils;
 import meteordevelopment.meteorclient.utils.player.Rotations;
 import net.minecraft.block.Block;
+import net.minecraft.block.BlockState;
 import net.minecraft.client.render.Camera;
+import net.minecraft.enchantment.Enchantments;
+import net.minecraft.entity.attribute.EntityAttributes;
+import net.minecraft.entity.effect.StatusEffectUtil;
+import net.minecraft.entity.effect.StatusEffects;
+import net.minecraft.item.ItemStack;
+import net.minecraft.registry.tag.FluidTags;
 import net.minecraft.util.Hand;
 import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.hit.HitResult;
@@ -81,6 +89,43 @@ public class TarBlockUtils {
         );
 
         return mc.world.raycast(context);
+    }
+
+    public static double getBlockBreakingSpeed(int slot, BlockState block) {
+        double speed = mc.player.getInventory().getMainStacks().get(slot).getMiningSpeedMultiplier(block);
+
+        if (speed > 1) {
+            ItemStack tool = mc.player.getInventory().getStack(slot);
+
+            int efficiency = Utils.getEnchantmentLevel(tool, Enchantments.EFFICIENCY);
+
+            if (efficiency > 0 && !tool.isEmpty()) speed += efficiency * efficiency + 1;
+        }
+
+        if (StatusEffectUtil.hasHaste(mc.player)) {
+            speed *= 1 + (StatusEffectUtil.getHasteAmplifier(mc.player) + 1) * 0.2F;
+        }
+
+        if (mc.player.hasStatusEffect(StatusEffects.MINING_FATIGUE)) {
+            float k = switch (mc.player.getStatusEffect(StatusEffects.MINING_FATIGUE).getAmplifier()) {
+                case 0 -> 0.3F;
+                case 1 -> 0.09F;
+                case 2 -> 0.0027F;
+                default -> 8.1E-4F;
+            };
+
+            speed *= k;
+        }
+
+        if (mc.player.isSubmergedIn(FluidTags.WATER)) {
+            speed *= mc.player.getAttributeValue(EntityAttributes.SUBMERGED_MINING_SPEED);
+        }
+
+        if (!mc.player.isOnGround()) {
+            speed /= 5.0F;
+        }
+
+        return speed;
     }
 
 

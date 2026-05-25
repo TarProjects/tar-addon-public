@@ -101,7 +101,7 @@ public class RegearBot extends TarModule {
         .build()
     );
 
-    private static final String whisperRegex = "^(\\w+) says: (.+)";
+    private static final String whisperRegex = "^(\\w+) says: ([\\w!]+) (\\w+)?";
 
     public RegearBot() {
         super(TarAddon.CATEGORY, "regear-bot", "Tuff bot that gives you gear");
@@ -123,14 +123,10 @@ public class RegearBot extends TarModule {
     private void onTick(TickEvent.Pre event) {
         if (!Utils.canUpdate()) return;
 
-        switch (stage) {
-            case Wait -> tickWait();
-            case Pot -> tickPot();
-            case DropArmor -> tickDropArmor();
-            case ChinaExploit -> tickChinaExploit();
-            default -> {
-            }
-        }
+        if (stage == Stage.Wait) tickWait();
+        if (stage == Stage.Pot) tickPot();
+        if (stage == Stage.DropArmor) tickDropArmor();
+        if (stage == Stage.ChinaExploit) tickChinaExploit();
     }
 
     private void tickWait() {
@@ -231,10 +227,13 @@ public class RegearBot extends TarModule {
 
         if (whisperMatcher.find()) {
             String username = whisperMatcher.group(1);
-            String msg = whisperMatcher.group(2);
-
-            if (usernames.get().contains(username) && msg.strip().equalsIgnoreCase((regearCommand.get().strip()))) {
-                regear(username);
+            String command = whisperMatcher.group(2);
+            if (usernames.get().contains(username) && command.strip().equalsIgnoreCase((regearCommand.get().strip()))) {
+                if (whisperMatcher.groupCount() == 3) {
+                    regear(whisperMatcher.group(3));
+                } else {
+                    regear(username);
+                }
             }
         }
     }

@@ -6,6 +6,7 @@ import meteordevelopment.meteorclient.utils.Utils;
 import meteordevelopment.meteorclient.utils.player.FindItemResult;
 import meteordevelopment.meteorclient.utils.player.InvUtils;
 import meteordevelopment.meteorclient.utils.player.Rotations;
+import meteordevelopment.meteorclient.utils.player.SlotUtils;
 import meteordevelopment.orbit.EventHandler;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
@@ -17,6 +18,7 @@ import net.minecraft.item.BlockItem;
 import net.minecraft.item.ItemStack;
 import net.minecraft.network.packet.c2s.play.PlayerInteractBlockC2SPacket;
 import net.minecraft.network.packet.c2s.play.PlayerMoveC2SPacket;
+import net.minecraft.screen.slot.SlotActionType;
 import net.minecraft.util.Hand;
 import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.math.BlockBox;
@@ -34,9 +36,6 @@ import static org.tarclient.addon.utils.BurrowUtils.checkHead;
 import static org.tarclient.addon.utils.BurrowUtils.getCeiledBlockPos;
 
 public class SelfFill extends TarModule {
-    // Le china
-    // TODO: make this work with math instead of meth, other blocks as well?
-    // Note: these values make a jump reach a height of 1 - 1e-7 from the starting block, so its pretty precise
     private final static double gravity = 0.98;
     private final static double minus = 0.08;
 
@@ -118,6 +117,22 @@ public class SelfFill extends TarModule {
         .build()
     );
 
+    private final Setting<Boolean> altSwap = sgBypass.add(new BoolSetting.Builder()
+        .name("alt-swap")
+        .description("Uses alt swapping instead of normal swaps")
+        .defaultValue(true)
+        .build()
+    );
+
+    private final Setting<Integer> altSwapCooldown = sgBypass.add(new IntSetting.Builder()
+        .name("alt-swap-cooldown")
+        .description("How many ticks to wait before alt-swapping again? Will use normal swaps in this time window")
+        .defaultValue(10)
+        .sliderRange(0, 20)
+        .visible(altSwap::get)
+        .build()
+    );
+
     /* --- Blocks --- */
     private final Setting<List<Block>> blocks = sgBlocks.add(new BlockListSetting.Builder()
         .name("blocks")
@@ -135,6 +150,7 @@ public class SelfFill extends TarModule {
     BlockPos start;
     int ticks;
     int attackTicks;
+    int swapCooldown;
 
     public SelfFill() {
         super(TarAddon.CATEGORY, "self-fill", "Sets you inside a block. This module is currently designed for crystalpvp.cc!");
@@ -149,6 +165,7 @@ public class SelfFill extends TarModule {
         start = getCeiledBlockPos();
         ticks = 0;
         attackTicks = 0;
+        swapCooldown = 0;
 
         if (autodisable.get()) {
             FindItemResult block = findPlaceable();
@@ -178,6 +195,8 @@ public class SelfFill extends TarModule {
             this.toggle();
             return;
         }
+
+        if (swapCooldown > 0) swapCooldown--;
 
         if (attack.get()) {
             if (attackTicks > 0) {
@@ -217,6 +236,27 @@ public class SelfFill extends TarModule {
         tryBurrow(block.slot());
 
         ticks = cooldown.get();
+    }
+
+    private void swap(int slot) {
+        if (mc.interactionManager == null || mc.player == null) return;
+
+        if (altSwap.get() && swapCooldown == 0) {
+            mc.interactionManager.clickSlot(mc.player.currentScreenHandler.syncId, SlotUtils.indexToId(slot), mc.player.getInventory().getSelectedSlot(), SlotActionType.SWAP, mc.player);
+        } else {
+            InvUtils.swap(slot, true);
+        }
+    }
+
+    private void swapBack(int slot) {
+        if (mc.interactionManager == null || mc.player == null) return;
+
+        if (altSwap.get() && swapCooldown == 0) {
+            mc.interactionManager.clickSlot(mc.player.currentScreenHandler.syncId, SlotUtils.indexToId(slot), mc.player.getInventory().getSelectedSlot(), SlotActionType.SWAP, mc.player);
+            swapCooldown = altSwapCooldown.get();
+        } else {
+            InvUtils.swapBack();
+        }
     }
 
 
@@ -276,9 +316,9 @@ public class SelfFill extends TarModule {
             velocity = (velocity - minus) * gravity;
         }
 
-        InvUtils.swap(slot, true);
+        swap(slot);
         sendPacket(new PlayerInteractBlockC2SPacket(Hand.MAIN_HAND, new BlockHitResult(getCeiledBlockPos().down().toCenterPos(), Direction.UP, getCeiledBlockPos().down(), false), 0));
-        InvUtils.swapBack();
+        swapBack(slot);
 
         sendPacket(new PlayerMoveC2SPacket.PositionAndOnGround(mc.player.getX(), mc.player.getY() + y + offset.get(), mc.player.getZ(), ongroundtwo.get(), mc.player.horizontalCollision));
     }

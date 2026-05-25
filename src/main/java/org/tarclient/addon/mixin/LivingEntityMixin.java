@@ -7,6 +7,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.tarclient.addon.events.PlayerJumpEvent;
+import org.tarclient.addon.events.TarTickMovementEvent;
 
 import static meteordevelopment.meteorclient.MeteorClient.mc;
 
@@ -16,6 +17,15 @@ public class LivingEntityMixin {
     private void onJump(CallbackInfo ci) {
         if ((Object) this == mc.player) {
             if (MeteorClient.EVENT_BUS.post(PlayerJumpEvent.get()).isCancelled()) {
+                ci.cancel();
+            }
+        }
+    }
+
+    @Inject(method = "tick", at = @At(value = "INVOKE", target = "Lnet/minecraft/entity/LivingEntity;tickMovement()V"), cancellable = true)
+    private void onTickMovement(CallbackInfo ci) {
+        if ((Object) this == mc.player) {
+            if (MeteorClient.EVENT_BUS.post(TarTickMovementEvent.get()).isCancelled()) {
                 ci.cancel();
             }
         }

@@ -50,6 +50,10 @@ public class MioUtils {
         }
     }
 
+    public static void toggleAutoMine(boolean state) {
+        toggleModule(mioCompatibility.toggleAutoMine.get(), state);
+    }
+
     public static void enableAttackingModules() {
         if (!mioCompatibility.enabled.get() || mioCompatibility.toggleAttackingModules.get().isEmpty()) return;
         for (String moduleToToggle : mioCompatibility.toggleAttackingModules.get()) {
@@ -79,5 +83,13 @@ public class MioUtils {
 
     private static void internalSendWithPrefix(String message) {
         ChatUtils.sendPlayerMsg(mioCompatibility.mioPrefix.get() + message, false);
+    }
+
+    public static double getPacketMineDamage() {
+        return mioCompatibility.packetMineDamage.get();
+    }
+
+    public static boolean getAssumeLastBlockState() {
+        return mioCompatibility.assumeLastBlockState.get();
     }
 }

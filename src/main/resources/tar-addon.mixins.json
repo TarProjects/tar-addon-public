@@ -8,12 +8,20 @@
   "mixins": [
     "ArmorSlotMixin",
     "ItemStackMixin",
+    "LivingEntityAccessor",
     "LivingEntityMixin",
+    "PlayerInventoryAccessor",
     "RotationsMixin"
   ],
   "client": [
+    "ClientPlayNetworkHandlerMixin",
     "ElementMixin",
     "HandledScreenAccessor",
-    "InventoryScreenAccessor"
+    "HandledScreenMixin",
+    "InGameHudMixin",
+    "InventoryScreenAccessor",
+    "KeyboardInputMixin",
+    "MinecraftClientMixin",
+    "MouseMixin"
   ]
 }

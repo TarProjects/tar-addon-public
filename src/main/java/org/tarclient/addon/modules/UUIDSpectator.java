@@ -7,7 +7,6 @@ import meteordevelopment.meteorclient.utils.Utils;
 import meteordevelopment.orbit.EventHandler;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.ItemEntity;
-import net.minecraft.entity.decoration.EndCrystalEntity;
 import net.minecraft.entity.projectile.ArrowEntity;
 import net.minecraft.entity.projectile.thrown.EnderPearlEntity;
 import net.minecraft.network.packet.c2s.play.SpectatorTeleportC2SPacket;
@@ -104,7 +103,8 @@ public class UUIDSpectator extends TarModule {
                 try {
                     UUID parsed = UUID.fromString(uuid);
                     mc.getNetworkHandler().sendPacket(new SpectatorTeleportC2SPacket(parsed));
-                } catch (IllegalArgumentException ignored) {}
+                } catch (IllegalArgumentException ignored) {
+                }
             }
         }
     }

@@ -7,8 +7,6 @@ import meteordevelopment.meteorclient.settings.*;
 import meteordevelopment.meteorclient.utils.render.color.Color;
 import meteordevelopment.meteorclient.utils.render.color.SettingColor;
 import meteordevelopment.orbit.EventHandler;
-import net.minecraft.block.BlockState;
-import net.minecraft.block.Blocks;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Box;
 import net.minecraft.util.math.MathHelper;
@@ -17,7 +15,8 @@ import org.tarclient.addon.TarModule;
 import org.tarclient.addon.utils.ColorUtils;
 import org.tarclient.addon.utils.MiningUtils;
 
-import static org.tarclient.addon.utils.MiningUtils.*;
+import static org.tarclient.addon.utils.MiningUtils.Breaking;
+import static org.tarclient.addon.utils.MiningUtils.getBreaking;
 
 public class BreakESP extends TarModule {
     private final SettingGroup sgRender = settings.createGroup("Render");

@@ -12,6 +12,7 @@ public class KitCommand extends Command {
     private static final String KITCHARS = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_";
     private static final int MAX_KIT_LENGTH = 245;
     private static final ItemStackArgument PLACEHOLDER_ARG = new ItemStackArgument(null, null);
+
     public KitCommand() {
         super("kit", "CrystalPvP.cc kit utilities");
     }

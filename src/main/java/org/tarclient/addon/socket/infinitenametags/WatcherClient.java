@@ -51,7 +51,8 @@ public class WatcherClient {
                             double y = Double.parseDouble(parts[2]);
                             double z = Double.parseDouble(parts[3]);
                             mc.execute(() -> instance.handleUUIDXYZ(uuid, x, y, z));
-                        } catch (Exception ignored) {}
+                        } catch (Exception ignored) {
+                        }
                     }
 
                 }
@@ -82,7 +83,8 @@ public class WatcherClient {
                 if (in != null) in.close();
                 if (out != null) out.close();
                 if (socket != null) socket.close();
-            } catch (IOException ignored) {}
+            } catch (IOException ignored) {
+            }
         }).start();
     }
 

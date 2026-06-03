@@ -1,10 +1,7 @@
 package org.tarclient.addon.utils;
 
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.entity.player.PlayerInventory;
 import net.minecraft.item.ItemStack;
-import org.tarclient.addon.mixin.PlayerInventoryAccessor;
 
 import static meteordevelopment.meteorclient.MeteorClient.mc;
 

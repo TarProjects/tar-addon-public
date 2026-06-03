@@ -2,7 +2,9 @@ package org.tarclient.addon.modules;
 
 import meteordevelopment.meteorclient.events.packets.PacketEvent;
 import meteordevelopment.meteorclient.events.world.TickEvent;
-import meteordevelopment.meteorclient.settings.*;
+import meteordevelopment.meteorclient.settings.IntSetting;
+import meteordevelopment.meteorclient.settings.Setting;
+import meteordevelopment.meteorclient.settings.SettingGroup;
 import meteordevelopment.meteorclient.utils.player.Rotations;
 import meteordevelopment.orbit.EventHandler;
 import net.minecraft.block.BlockState;
@@ -36,7 +38,7 @@ public class PearlBoost extends TarModule {
         .name("on-sneak-crystals")
         .description("Boost if player is sneaking")
         .defaultValue(2)
-       .range(0, 5)
+        .range(0, 5)
         .build()
     );
 
@@ -202,7 +204,6 @@ public class PearlBoost extends TarModule {
 
         return flat.dotProduct(dir) > 0.98;
     }
-
 
 
     private enum Stage {

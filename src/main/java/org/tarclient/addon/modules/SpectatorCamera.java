@@ -25,6 +25,7 @@ public class SpectatorCamera extends TarModule {
     private boolean upPressed, downPressed;
     private double offset = 0;
     private double prevOffset = 0;
+
     public SpectatorCamera() {
         super(TarAddon.CATEGORY, "spectator-camera", "Modifies Y level");
     }

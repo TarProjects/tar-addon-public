@@ -33,10 +33,10 @@ public class TestFly extends TarModule {
 
 
     private final Setting<List<IntRange>> test = sgGeneral.add(new IntRangeListSetting.Builder()
-            .name("test")
-            .description("test")
-            .min(0)
-            .max(10)
+        .name("test")
+        .description("test")
+        .min(0)
+        .max(10)
         .build()
     );
 

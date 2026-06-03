@@ -248,7 +248,6 @@ public class InfiniteNameTags extends TarModule {
     }
 
 
-
     @EventHandler
     private void onPacketReceive(PacketEvent.Receive event) {
         if (mc.world == null || mc.player == null) return;
@@ -260,7 +259,6 @@ public class InfiniteNameTags extends TarModule {
             }
         }
     }
-
 
 
     @Override

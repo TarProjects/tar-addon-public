@@ -32,6 +32,7 @@ public class RespawnMessage extends TarModule {
     );
     int counter = 0;
     boolean active = false;
+
     public RespawnMessage() {
         super(TarAddon.CATEGORY, "respawn-message", "Sends a message on respawn");
     }

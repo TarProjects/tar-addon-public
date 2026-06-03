@@ -50,6 +50,7 @@ public class AutoLobby extends TarModule {
     int index = 0;
     int cooldown = 0;
     int timer = 0;
+
     public AutoLobby() {
         super(TarAddon.CATEGORY, "auto-lobby", "Walks around in the lobby. Incredibly tuff");
     }

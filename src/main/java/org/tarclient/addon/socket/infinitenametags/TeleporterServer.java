@@ -1,6 +1,5 @@
 package org.tarclient.addon.socket.infinitenametags;
 
-import org.tarclient.addon.modules.InfiniteNameTags;
 import org.tarclient.addon.modules.InfiniteNameTagsTeleporter;
 
 import java.io.BufferedReader;
@@ -46,7 +45,8 @@ public class TeleporterServer {
                     try {
                         UUID uuid = UUID.fromString(uuidString);
                         mc.execute(() -> instance.handleAddTrack(uuid));
-                    } catch (Exception ignored) {}
+                    } catch (Exception ignored) {
+                    }
                 }
                 if (line.startsWith("FORCETRACK:")) {
                     String uuidString = line.substring(11);
@@ -54,7 +54,8 @@ public class TeleporterServer {
                     try {
                         UUID uuid = UUID.fromString(uuidString);
                         mc.execute(() -> instance.handleForceTrack(uuid));
-                    } catch (Exception ignored) {}
+                    } catch (Exception ignored) {
+                    }
                 }
             }
         } catch (IOException exception) {
@@ -83,7 +84,8 @@ public class TeleporterServer {
             if (out != null) out.close();
             if (clientSocket != null) clientSocket.close();
             if (serverSocket != null) serverSocket.close();
-        } catch (IOException ignored) {}
+        } catch (IOException ignored) {
+        }
     }
 
     public boolean running() {

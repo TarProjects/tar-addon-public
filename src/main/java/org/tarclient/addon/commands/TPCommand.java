@@ -7,7 +7,6 @@ import meteordevelopment.meteorclient.commands.arguments.PlayerListEntryArgument
 import net.minecraft.client.network.PlayerListEntry;
 import net.minecraft.command.CommandSource;
 import net.minecraft.network.packet.c2s.play.SpectatorTeleportC2SPacket;
-import net.minecraft.world.GameMode;
 
 import java.util.UUID;
 

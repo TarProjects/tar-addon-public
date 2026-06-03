@@ -1,6 +1,5 @@
 package org.tarclient.addon.modules;
 
-import meteordevelopment.meteorclient.events.render.Render3DEvent;
 import meteordevelopment.meteorclient.events.world.TickEvent;
 import meteordevelopment.meteorclient.renderer.ShapeMode;
 import meteordevelopment.meteorclient.settings.*;
@@ -11,7 +10,6 @@ import meteordevelopment.meteorclient.utils.entity.SortPriority;
 import meteordevelopment.meteorclient.utils.entity.TargetUtils;
 import meteordevelopment.meteorclient.utils.entity.fakeplayer.FakePlayerEntity;
 import meteordevelopment.meteorclient.utils.player.*;
-import meteordevelopment.meteorclient.utils.render.color.Color;
 import meteordevelopment.meteorclient.utils.render.color.SettingColor;
 import meteordevelopment.meteorclient.utils.world.BlockUtils;
 import meteordevelopment.orbit.EventHandler;
@@ -31,12 +29,11 @@ import net.minecraft.world.GameMode;
 import org.tarclient.addon.TarAddon;
 import org.tarclient.addon.TarModule;
 import org.tarclient.addon.events.ClickBlockEvent;
-import org.tarclient.addon.utils.ColorUtils;
 import org.tarclient.addon.utils.HoleUtils;
 import org.tarclient.addon.utils.TarBlockUtils;
 
 import static org.tarclient.addon.utils.MiningUtils.*;
-import static org.tarclient.addon.utils.MioUtils.*;
+import static org.tarclient.addon.utils.MioUtils.toggleAutoMine;
 
 public class AutoCEV extends TarModule {
     private final SettingGroup sgGeneral = this.settings.getDefaultGroup();
@@ -103,42 +100,6 @@ public class AutoCEV extends TarModule {
         .description("How much damage to block before place")
         .defaultValue(1)
         .sliderRange(0, 1)
-        .build()
-    );
-
-    /* --- Render --- */
-    private final Setting<ShapeMode> shapeMode = sgRender.add(new EnumSetting.Builder<ShapeMode>()
-        .name("shape-mode")
-        .description("How the shapes are rendered.")
-        .defaultValue(ShapeMode.Both)
-        .build()
-    );
-
-    private final Setting<SettingColor> startSideColor = sgRender.add(new ColorSetting.Builder()
-        .name("start-side-color")
-        .description("The side color of the target box rendering.")
-        .defaultValue(new SettingColor(255, 0, 0, 70))
-        .build()
-    );
-
-    private final Setting<SettingColor> startLineColor = sgRender.add(new ColorSetting.Builder()
-        .name("start-line-color")
-        .description("The line color of the target box rendering.")
-        .defaultValue(new SettingColor(255, 0, 0))
-        .build()
-    );
-
-    private final Setting<SettingColor> endSideColor = sgRender.add(new ColorSetting.Builder()
-        .name("end-side-color")
-        .description("The side color of the target box rendering.")
-        .defaultValue(new SettingColor(255, 0, 0, 70))
-        .build()
-    );
-
-    private final Setting<SettingColor> endLineColor = sgRender.add(new ColorSetting.Builder()
-        .name("end-line-color")
-        .description("The line color of the target box rendering.")
-        .defaultValue(new SettingColor(255, 0, 0))
         .build()
     );
 

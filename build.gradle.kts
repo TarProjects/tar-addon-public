@@ -28,6 +28,8 @@ dependencies {
     // Meteor
     modImplementation(libs.meteor.client)
     implementation(libs.starscript)
+
+    compileOnly(libs.baritone)
 }
 
 tasks {

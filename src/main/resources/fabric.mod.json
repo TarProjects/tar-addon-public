@@ -27,5 +27,8 @@
       "${mc_version}"
     ],
     "meteor-client": "*"
+  },
+  "suggests": {
+    "baritone": "*"
   }
 }

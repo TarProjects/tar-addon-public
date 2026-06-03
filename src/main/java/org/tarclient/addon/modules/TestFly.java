@@ -1,15 +1,22 @@
 package org.tarclient.addon.modules;
 
+import meteordevelopment.meteorclient.events.packets.PacketEvent;
 import meteordevelopment.meteorclient.events.world.TickEvent;
-import meteordevelopment.meteorclient.settings.*;
+import meteordevelopment.meteorclient.settings.IntSetting;
+import meteordevelopment.meteorclient.settings.Setting;
+import meteordevelopment.meteorclient.settings.SettingGroup;
 import meteordevelopment.orbit.EventHandler;
-import net.minecraft.util.math.Vec3d;
+import net.minecraft.network.packet.c2s.common.ResourcePackStatusC2SPacket;
+import net.minecraft.network.packet.s2c.common.ResourcePackSendS2CPacket;
+import net.minecraft.text.Text;
 import org.tarclient.addon.TarAddon;
 import org.tarclient.addon.TarModule;
 import org.tarclient.addon.settings.IntRange;
 import org.tarclient.addon.settings.impl.IntRangeListSetting;
 
 import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 
 
 public class TestFly extends TarModule {
@@ -46,23 +53,29 @@ public class TestFly extends TarModule {
 
     @EventHandler
     private void onTickPre(TickEvent.Pre event) {
-            if (getPlayerSpeed().horizontalLength() > 4) {
-                info("TIMER");
-            }
-
+        if (mc.player == null) return;
+        mc.player.setOnGround(true);
+        mc.player.noClip = false;
     }
 
-    public Vec3d getPlayerSpeed() {
-        if (mc.player == null) return Vec3d.ZERO;
+    @EventHandler
+    private void onResourcePackResponse(PacketEvent.Send event) {
+        if (event.packet instanceof ResourcePackStatusC2SPacket(
+            java.util.UUID id, ResourcePackStatusC2SPacket.Status status
+        )) {
+            System.out.println(id);
+            System.out.println(status);
+        }
+    }
 
-        double tX = mc.player.getX() - mc.player.lastX;
-        double tY = mc.player.getY() - mc.player.lastY;
-        double tZ = mc.player.getZ() - mc.player.lastZ;
-
-        tX *= 20;
-        tY *= 20;
-        tZ *= 20;
-
-        return new Vec3d(tX, tY, tZ);
+    @EventHandler
+    private void onResourcePackReceive(PacketEvent.Receive event) {
+        if (event.packet instanceof ResourcePackSendS2CPacket(
+            UUID id, String url, String hash, boolean required, Optional<Text> prompt
+        )) {
+            System.out.println(url);
+            System.out.println(required);
+            System.out.println(prompt);
+        }
     }
 }

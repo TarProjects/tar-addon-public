@@ -18,7 +18,6 @@ import java.util.regex.Pattern;
 public class AutoEZ extends TarModule {
     private final SettingGroup sgGeneral = this.settings.getDefaultGroup();
 
-
     private final Setting<String> ezmessage = sgGeneral.add(new StringSetting.Builder()
         .name("auto-ez-message")
         .description("What message to send. {username} will be replaced with the \"loser's\" username")

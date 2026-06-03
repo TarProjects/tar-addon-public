@@ -2,7 +2,6 @@ package org.tarclient.addon.modules;
 
 import meteordevelopment.meteorclient.events.game.GameLeftEvent;
 import meteordevelopment.meteorclient.events.game.OpenScreenEvent;
-import meteordevelopment.meteorclient.events.game.ReceiveMessageEvent;
 import meteordevelopment.meteorclient.events.packets.PacketEvent;
 import meteordevelopment.meteorclient.events.render.Render2DEvent;
 import meteordevelopment.meteorclient.events.render.Render3DEvent;
@@ -11,7 +10,6 @@ import meteordevelopment.meteorclient.renderer.Renderer2D;
 import meteordevelopment.meteorclient.renderer.ShapeMode;
 import meteordevelopment.meteorclient.renderer.text.TextRenderer;
 import meteordevelopment.meteorclient.settings.*;
-import meteordevelopment.meteorclient.utils.Utils;
 import meteordevelopment.meteorclient.utils.render.NametagUtils;
 import meteordevelopment.meteorclient.utils.render.color.SettingColor;
 import meteordevelopment.orbit.EventHandler;
@@ -19,23 +17,16 @@ import net.minecraft.client.gui.screen.DisconnectedScreen;
 import net.minecraft.client.network.PlayerListEntry;
 import net.minecraft.entity.EntityType;
 import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.network.packet.PacketType;
 import net.minecraft.network.packet.s2c.play.EntitySpawnS2CPacket;
-import net.minecraft.network.packet.s2c.play.PlayerListS2CPacket;
-import net.minecraft.network.packet.s2c.play.PlayerRemoveS2CPacket;
-import net.minecraft.util.math.BlockPos;
 import org.joml.Vector3d;
 import org.tarclient.addon.TarAddon;
 import org.tarclient.addon.TarModule;
 import org.tarclient.addon.socket.infinitenametags.WatcherClient;
-import org.w3c.dom.Text;
 
 import java.io.IOException;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 public class InfiniteNameTags extends TarModule {
     private final SettingGroup sgGeneral = this.settings.getDefaultGroup();

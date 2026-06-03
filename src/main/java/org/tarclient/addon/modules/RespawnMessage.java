@@ -25,7 +25,7 @@ public class RespawnMessage extends TarModule {
 
     private final Setting<Integer> delay = sgGeneral.add(new IntSetting.Builder()
         .name("delay")
-        .description("When to trigger X-Carry")
+        .description("When to trigger the message")
         .defaultValue(20)
         .sliderRange(0, 20)
         .build()

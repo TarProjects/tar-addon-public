@@ -16,6 +16,7 @@ meteor = "1.21.11-SNAPSHOT"
 starscript = "0.2.5"
 
 # Mods
+baritone = "1.21.11-SNAPSHOT"
 
 [libraries]
 # Fabric base
@@ -28,6 +29,7 @@ meteor-client = { module = "meteordevelopment:meteor-client", version.ref = "met
 starscript = { module = "org.meteordev:starscript", version.ref = "starscript" }
 
 # Mods
+baritone = { module = "meteordevelopment:baritone", version.ref = "baritone" }
 
 [plugins]
 fabric-loom = { id = "fabric-loom", version.ref = "loom" }

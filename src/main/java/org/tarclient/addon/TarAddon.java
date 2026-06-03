@@ -8,6 +8,7 @@ import meteordevelopment.meteorclient.systems.modules.Category;
 import meteordevelopment.meteorclient.systems.modules.Modules;
 import meteordevelopment.meteorclient.utils.PreInit;
 import meteordevelopment.meteorclient.utils.misc.MeteorStarscript;
+import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.entity.player.PlayerEntity;
 import org.meteordev.starscript.value.Value;
 import org.meteordev.starscript.value.ValueMap;
@@ -23,6 +24,8 @@ import static meteordevelopment.meteorclient.MeteorClient.mc;
 
 public class TarAddon extends MeteorAddon {
     public static final Category CATEGORY = new Category("Tar-Addon");
+
+    private static final String BARITONE_MOD_ID = "baritone";
 
     @PreInit
     public static void preInit() {
@@ -87,8 +90,10 @@ public class TarAddon extends MeteorAddon {
         Modules.get().add(new InfiniteNameTags());
         Modules.get().add(new InfiniteNameTagsTeleporter());
         Modules.get().add(new InventoryFixes());
+        Modules.get().add(new ItemUse());
         Modules.get().add(new KitDeleter());
         Modules.get().add(new MioCompatibility());
+        Modules.get().add(new ModifyESP());
         Modules.get().add(new NCPSpeed());
         Modules.get().add(new PearlBoost());
         Modules.get().add(new PearlPhase());
@@ -97,10 +102,16 @@ public class TarAddon extends MeteorAddon {
         Modules.get().add(new RegearBot());
         Modules.get().add(new RespawnMessage());
         Modules.get().add(new SelfFill());
+        Modules.get().add(new SpectatorCamera());
         Modules.get().add(new TestFly());
         Modules.get().add(new TickShift());
         Modules.get().add(new UUIDSpectator());
         Modules.get().add(new VirtualHotbar());
+
+        // module requires/relies on baritone
+        if (FabricLoader.getInstance().isModLoaded(BARITONE_MOD_ID)) {
+            Modules.get().add(new AutoLobby());
+        }
 
         Commands.add(new KitCommand());
         Commands.add(new SetPoseCommand());

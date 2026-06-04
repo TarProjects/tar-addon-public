@@ -3,7 +3,10 @@ package org.tarclient.addon.modules;
 import meteordevelopment.meteorclient.events.render.Render3DEvent;
 import meteordevelopment.meteorclient.events.world.TickEvent;
 import meteordevelopment.meteorclient.renderer.ShapeMode;
-import meteordevelopment.meteorclient.settings.*;
+import meteordevelopment.meteorclient.settings.ColorSetting;
+import meteordevelopment.meteorclient.settings.EnumSetting;
+import meteordevelopment.meteorclient.settings.Setting;
+import meteordevelopment.meteorclient.settings.SettingGroup;
 import meteordevelopment.meteorclient.utils.render.color.Color;
 import meteordevelopment.meteorclient.utils.render.color.SettingColor;
 import meteordevelopment.orbit.EventHandler;
@@ -20,13 +23,6 @@ import static org.tarclient.addon.utils.MiningUtils.getBreaking;
 
 public class BreakESP extends TarModule {
     private final SettingGroup sgRender = settings.createGroup("Render");
-
-    private final Setting<Boolean> renderAir = sgRender.add(new BoolSetting.Builder()
-        .name("render-air")
-        .description("Even if breaking is air, try rendering")
-        .defaultValue(true)
-        .build()
-    );
 
     private final Setting<ShapeMode> shapeMode = sgRender.add(new EnumSetting.Builder<ShapeMode>()
         .name("shape-mode")

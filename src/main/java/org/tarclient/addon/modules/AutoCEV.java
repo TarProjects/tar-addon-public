@@ -1,7 +1,6 @@
 package org.tarclient.addon.modules;
 
 import meteordevelopment.meteorclient.events.world.TickEvent;
-import meteordevelopment.meteorclient.renderer.ShapeMode;
 import meteordevelopment.meteorclient.settings.*;
 import meteordevelopment.meteorclient.systems.friends.Friends;
 import meteordevelopment.meteorclient.utils.Utils;
@@ -10,7 +9,6 @@ import meteordevelopment.meteorclient.utils.entity.SortPriority;
 import meteordevelopment.meteorclient.utils.entity.TargetUtils;
 import meteordevelopment.meteorclient.utils.entity.fakeplayer.FakePlayerEntity;
 import meteordevelopment.meteorclient.utils.player.*;
-import meteordevelopment.meteorclient.utils.render.color.SettingColor;
 import meteordevelopment.meteorclient.utils.world.BlockUtils;
 import meteordevelopment.orbit.EventHandler;
 import net.minecraft.block.Blocks;
@@ -254,7 +252,7 @@ public class AutoCEV extends TarModule {
     private boolean isValidPlacePosition(BlockPos pos) {
         if (mc.player == null) return false;
 
-        Direction placeSide = BlockUtils.getPlaceSide(pos);
+        Direction placeSide = BlockUtils.getClosestPlaceSide(pos);
         if (placeSide == null) return false;
 
         if (mc.player.squaredDistanceTo(pos.toCenterPos()) > range.get() * range.get()) return false;

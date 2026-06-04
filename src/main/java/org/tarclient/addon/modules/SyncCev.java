@@ -335,7 +335,7 @@ public class SyncCev extends TarModule {
     private boolean isValidPlacePos(BlockPos pos) {
         if (mc.world == null) return false;
 
-        Direction placeSide = BlockUtils.getPlaceSide(pos);
+        Direction placeSide = BlockUtils.getClosestPlaceSide(pos);
         if (placeSide == null) return false;
 
         BlockPos up = pos.up();

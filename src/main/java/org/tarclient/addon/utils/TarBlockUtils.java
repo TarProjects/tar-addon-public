@@ -20,6 +20,8 @@ import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.RaycastContext;
 
+import java.util.Set;
+
 import static meteordevelopment.meteorclient.MeteorClient.mc;
 import static meteordevelopment.meteorclient.utils.world.BlockUtils.*;
 
@@ -44,7 +46,7 @@ public class TarBlockUtils {
         Vec3d hitPos = Vec3d.ofCenter(blockPos);
 
         BlockPos neighbour;
-        Direction side = getPlaceSide(blockPos);
+        Direction side = getClosestPlaceSide(blockPos);
 
 
         if (side == null) {
@@ -128,6 +130,13 @@ public class TarBlockUtils {
         return speed;
     }
 
+    // 6 adjacency
+    public static boolean isAdjacentToAny(BlockPos pos, Set<BlockPos> set) {
+        for (Direction direction : Direction.values()) {
+            if (set.contains(pos.offset(direction))) return true;
+        }
+        return false;
+    }
 
     @FunctionalInterface
     public interface InteractRunnable {

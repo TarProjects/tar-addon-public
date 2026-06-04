@@ -6,17 +6,17 @@ import meteordevelopment.meteorclient.settings.IntSetting;
 import meteordevelopment.meteorclient.settings.Setting;
 import meteordevelopment.meteorclient.settings.SettingGroup;
 import meteordevelopment.orbit.EventHandler;
+import net.minecraft.block.BlockState;
+import net.minecraft.block.Blocks;
 import net.minecraft.network.packet.c2s.common.ResourcePackStatusC2SPacket;
-import net.minecraft.network.packet.s2c.common.ResourcePackSendS2CPacket;
-import net.minecraft.text.Text;
+import net.minecraft.network.packet.s2c.play.EntitiesDestroyS2CPacket;
+import net.minecraft.network.packet.s2c.play.PlayerPositionLookS2CPacket;
 import org.tarclient.addon.TarAddon;
 import org.tarclient.addon.TarModule;
 import org.tarclient.addon.settings.IntRange;
 import org.tarclient.addon.settings.impl.IntRangeListSetting;
 
 import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
 
 
 public class TestFly extends TarModule {
@@ -44,18 +44,29 @@ public class TestFly extends TarModule {
         super(TarAddon.CATEGORY, "test", "");
     }
 
+    PlayerPositionLookS2CPacket packet = null;
 
     @Override
     public void onActivate() {
+        packet = null;
         info(mc.world.getRegistryKey().getValue().getPath());
     }
 
+    @Override
+    public void onDeactivate() {
+        if (true) return;
+       /* if (packet != null) {
+            packet.apply(mc.getNetworkHandler());
+        }
+
+        */
+    }
 
     @EventHandler
     private void onTickPre(TickEvent.Pre event) {
-        if (mc.player == null) return;
-        mc.player.setOnGround(true);
-        mc.player.noClip = false;
+        if (mc.player == null || mc.world == null) return;
+        BlockState state = mc.world.getBlockState(mc.player.getBlockPos());
+        System.out.println(state.isAir() || state.getBlock() == Blocks.LIGHT);
     }
 
     @EventHandler
@@ -63,19 +74,34 @@ public class TestFly extends TarModule {
         if (event.packet instanceof ResourcePackStatusC2SPacket(
             java.util.UUID id, ResourcePackStatusC2SPacket.Status status
         )) {
-            System.out.println(id);
-            System.out.println(status);
+            //System.out.println(id);
+            //System.out.println(status);
         }
     }
 
     @EventHandler
     private void onResourcePackReceive(PacketEvent.Receive event) {
-        if (event.packet instanceof ResourcePackSendS2CPacket(
-            UUID id, String url, String hash, boolean required, Optional<Text> prompt
-        )) {
-            System.out.println(url);
-            System.out.println(required);
-            System.out.println(prompt);
+        if (true) return;
+        if (event.packet instanceof EntitiesDestroyS2CPacket packet) {
+            info(packet.getEntityIds().toString());
+        }
+        if (event.packet instanceof PlayerPositionLookS2CPacket packet) {
+            info("TELEPORT");
+            System.out.println("--TELEPORT--");
+            System.out.println(packet.teleportId());
+            System.out.println(packet.change().position().x);
+            System.out.println(packet.change().position().z);
+            System.out.println("------------");
+            if (this.packet == null) {
+                this.packet = packet;
+            }
+
+
+            System.out.println("cancelled");
+
+            event.cancel();
         }
     }
+
+
 }

@@ -96,7 +96,7 @@ public class HeadBurrow extends TarModule {
             return;
         }
 
-        if (!BlockUtils.canPlace(mc.player.getBlockPos().up(), false) || BlockUtils.getPlaceSide(mc.player.getBlockPos().up()) == null) {
+        if (!BlockUtils.canPlace(mc.player.getBlockPos().up(), false) || BlockUtils.getClosestPlaceSide(mc.player.getBlockPos().up()) == null) {
             error("Cant place here!");
             this.toggle();
             return;

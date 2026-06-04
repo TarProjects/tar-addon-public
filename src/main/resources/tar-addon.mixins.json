@@ -17,6 +17,7 @@
     "CameraMixin",
     "ClientPlayNetworkHandlerMixin",
     "ElementMixin",
+    "EntityRenderManagerMixin",
     "HandledScreenAccessor",
     "HandledScreenMixin",
     "InGameHudMixin",

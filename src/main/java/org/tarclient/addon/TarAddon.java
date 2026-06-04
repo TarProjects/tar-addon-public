@@ -12,10 +12,7 @@ import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.entity.player.PlayerEntity;
 import org.meteordev.starscript.value.Value;
 import org.meteordev.starscript.value.ValueMap;
-import org.tarclient.addon.commands.KitCommand;
-import org.tarclient.addon.commands.SetPoseCommand;
-import org.tarclient.addon.commands.TPCommand;
-import org.tarclient.addon.commands.UUIDCommand;
+import org.tarclient.addon.commands.*;
 import org.tarclient.addon.modules.*;
 import org.tarclient.addon.themes.TarSettingsTheme;
 import org.tarclient.addon.utils.MioUtils;
@@ -86,6 +83,8 @@ public class TarAddon extends MeteorAddon {
         Modules.get().add(new CornerClip());
         Modules.get().add(new CrawlESP());
         Modules.get().add(new DropKit());
+        Modules.get().add(new Flattener());
+        Modules.get().add(new GridFiller());
         Modules.get().add(new HeadBurrow());
         Modules.get().add(new InfiniteNameTags());
         Modules.get().add(new InfiniteNameTagsTeleporter());
@@ -95,7 +94,9 @@ public class TarAddon extends MeteorAddon {
         Modules.get().add(new MioCompatibility());
         Modules.get().add(new ModifyESP());
         Modules.get().add(new NCPSpeed());
+        Modules.get().add(new NoLerp());
         Modules.get().add(new PearlBoost());
+        Modules.get().add(new PearlCancel());
         Modules.get().add(new PearlPhase());
         Modules.get().add(new PhaseFix());
         Modules.get().add(new PlaceObsidian());
@@ -114,6 +115,7 @@ public class TarAddon extends MeteorAddon {
         }
 
         Commands.add(new KitCommand());
+        Commands.add(new ResetChangesCommand());
         Commands.add(new SetPoseCommand());
         Commands.add(new TPCommand());
         Commands.add(new UUIDCommand());

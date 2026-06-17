@@ -20,6 +20,7 @@ import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.RaycastContext;
 
+import java.util.List;
 import java.util.Set;
 
 import static meteordevelopment.meteorclient.MeteorClient.mc;
@@ -64,6 +65,29 @@ public class TarBlockUtils {
 
         return true;
     }
+
+    public static double getClosestYaw(BlockPos pos) {
+        Direction side = getClosestPlaceSide(pos);
+        if (side == null) return Rotations.getYaw(pos);
+        Vec3d hitPos = Vec3d.ofCenter(pos).add(side.getOffsetX() * 0.5, side.getOffsetY() * 0.5, side.getOffsetZ() * 0.5);
+        return Rotations.getYaw(hitPos);
+    }
+
+    public static double getClosestPitch(BlockPos pos) {
+        Direction side = getClosestPlaceSide(pos);
+        if (side == null) return Rotations.getPitch(pos);
+        Vec3d hitPos = Vec3d.ofCenter(pos).add(side.getOffsetX() * 0.5, side.getOffsetY() * 0.5, side.getOffsetZ() * 0.5);
+        return Rotations.getPitch(hitPos);
+    }
+
+    public static double getSquaredDistanceClosest(BlockPos pos) {
+        if (mc.player == null) return 0;
+        Direction side = getClosestPlaceSide(pos);
+        if (side == null) return mc.player.squaredDistanceTo(pos.toCenterPos());
+        Vec3d hitPos = Vec3d.ofCenter(pos).add(side.getOffsetX() * 0.5, side.getOffsetY() * 0.5, side.getOffsetZ() * 0.5);
+        return mc.player.squaredDistanceTo(hitPos);
+    }
+
 
     public static HitResult raycastBlocks(double distance) {
         if (mc.getCameraEntity() == null || mc.world == null) return null;
@@ -137,6 +161,14 @@ public class TarBlockUtils {
         }
         return false;
     }
+
+    public static boolean isAdjacentToAny(BlockPos pos, List<BlockPos> list) {
+        for (Direction direction : Direction.values()) {
+            if (list.contains(pos.offset(direction))) return true;
+        }
+        return false;
+    }
+
 
     @FunctionalInterface
     public interface InteractRunnable {

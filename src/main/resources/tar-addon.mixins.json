@@ -24,6 +24,7 @@
     "InventoryScreenAccessor",
     "KeyboardInputMixin",
     "MinecraftClientMixin",
-    "MouseMixin"
+    "MouseMixin",
+    "PlayerListHudAccessor"
   ]
 }

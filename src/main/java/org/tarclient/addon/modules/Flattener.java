@@ -56,7 +56,7 @@ public class Flattener extends TarModule {
     private final Setting<Double> range = sgGeneral.add(new DoubleSetting.Builder()
         .name("range")
         .description("Maximum distance of block placements")
-        .defaultValue(5.2)
+        .defaultValue(5)
         .sliderRange(0, 6)
         .build()
     );
@@ -64,7 +64,7 @@ public class Flattener extends TarModule {
     private final Setting<Integer> blocksPerTick = sgGeneral.add(new IntSetting.Builder()
         .name("blocks-per-tick")
         .description("How many blocks to place per tick (max)")
-        .defaultValue(4)
+        .defaultValue(2)
         .sliderRange(0, 8)
         .build()
     );
@@ -89,15 +89,24 @@ public class Flattener extends TarModule {
     private final Setting<Boolean> onlyInHole = sgConditions.add(new BoolSetting.Builder()
         .name("only-in-hole")
         .description("Only activates in hole")
-        .defaultValue(true)
+        .defaultValue(false)
         .build()
     );
+
+    private final Setting<Double> maxPositionChange = sgPredict.add(new DoubleSetting.Builder()
+        .name("max-position-change")
+        .description("Judges position changes to not waste blocks on blink")
+        .defaultValue(0.5)
+        .sliderRange(0, 5)
+        .build()
+    );
+
 
     /* --- Predict --- */
     private final Setting<Integer> predict = sgPredict.add(new IntSetting.Builder()
         .name("predict")
         .description("How many ticks to predict")
-        .defaultValue(2)
+        .defaultValue(6)
         .sliderRange(0, 5)
         .build()
     );
@@ -118,11 +127,27 @@ public class Flattener extends TarModule {
         .build()
     );
 
+    private final Setting<Double> expandBox = sgPredict.add(new DoubleSetting.Builder()
+        .name("expand-box")
+        .description("Expands the prediction")
+        .defaultValue(-0.12)
+        .sliderRange(-0.3, 2)
+        .range(-0.3, 2)
+        .build()
+    );
+
     /* --- Render --- */
+    private final Setting<Boolean> debug = sgRender.add(new BoolSetting.Builder()
+        .name("debug")
+        .description("Renders the entire path constantly")
+        .defaultValue(false)
+        .build()
+    );
+
     private final Setting<Double> fadeTime = sgRender.add(new DoubleSetting.Builder()
         .name("fade-time")
         .description("How many seconds should rendering take?")
-        .defaultValue(1.5)
+        .defaultValue(0.2)
         .sliderRange(0, 3)
         .build()
     );
@@ -147,8 +172,8 @@ public class Flattener extends TarModule {
     );
 
     private PlayerEntity target;
-    private List<BlockPos> placePositions = new ArrayList<>();
 
+    private final List<BlockPos> placePositions = new ArrayList<>();
     private final Map<BlockPos, Double> renderQueue = new HashMap<>();
 
     public Flattener() {
@@ -169,6 +194,15 @@ public class Flattener extends TarModule {
 
     @EventHandler
     private void onRender(Render3DEvent event) {
+        if (debug.get()) {
+            // debug handling
+            for (BlockPos placePosition : placePositions) {
+                event.renderer.box(placePosition, sideColor.get(), lineColor.get(), shapeMode.get(), 0);
+            }
+
+            return;
+        }
+
         Iterator<Map.Entry<BlockPos, Double>> it = renderQueue.entrySet().iterator();
 
         while (it.hasNext()) {
@@ -212,6 +246,12 @@ public class Flattener extends TarModule {
         target = getTarget(targetRange.get(), priority.get());
         if (TargetUtils.isBadTarget(target, targetRange.get())) {
             target = null;
+            return;
+        }
+
+        Vec3d delta = new Vec3d(target.getX() - target.lastX, target.getY() - target.lastY, target.getZ() - target.lastZ);
+        if (delta.horizontalLengthSquared() > maxPositionChange.get() * maxPositionChange.get()) {
+            // ignore blink
             return;
         }
 
@@ -284,65 +324,43 @@ public class Flattener extends TarModule {
     }
 
     private void fetchPlacePositions() {
-        Vec3d start = target.getEntityPos();
-        Vec3d end = predict(target, predict.get());
+        if (mc.world == null) return;
 
-        placePositions = getBlocksInLine(start, end, -1);
-    }
+        double deltaX = target.getX() - target.lastX;
+        double deltaZ = target.getZ() - target.lastZ;
 
-    public Vec3d predict(PlayerEntity entity, int ticks) {
-        if (mc.world == null) return null;
+        double expand = Math.max(expandBox.get(), -0.2999);
 
-        double deltaX = entity.getX() - entity.lastX;
-        double deltaZ = entity.getZ() - entity.lastZ;
+        Box baseBox = target.getBoundingBox().expand(expand, 0, expand);
 
-        double motionX = 0;
-        double motionZ = 0;
+        int y = (int) Math.floor(target.getY()) - 1; // Target the block layer right below the player
 
-        for (double i = 1; i <= ticks; i += 0.5) {
+        for (double i = 1; i <= predict.get(); i += 0.5) {
             Vec3d offset = new Vec3d(deltaX * i, 0, deltaZ * i);
-            Box testBox = entity.getBoundingBox().offset(offset);
 
-            if (!mc.world.canCollide(entity, testBox)) {
-                motionX = deltaX * i;
-                motionZ = deltaZ * i;
-            } else {
+            Box collisionCheckBox = target.getBoundingBox().offset(offset);
+            if (i > 0 && mc.world.canCollide(target, collisionCheckBox)) {
                 break;
             }
-        }
 
-        return new Vec3d(entity.getX() + motionX, entity.getY(), entity.getZ() + motionZ);
-    }
+            Box predictedBox = baseBox.offset(offset);
 
-    // Bresenhams line algorithm
-    public List<BlockPos> getBlocksInLine(Vec3d start, Vec3d end, int yOffset) {
-        List<BlockPos> positions = new ArrayList<>();
+            int minX = (int) Math.floor(predictedBox.minX);
+            int maxX = (int) Math.floor(predictedBox.maxX);
+            int minZ = (int) Math.floor(predictedBox.minZ);
+            int maxZ = (int) Math.floor(predictedBox.maxZ);
 
-        int x1 = (int) Math.floor(start.x);
-        int z1 = (int) Math.floor(start.z);
-        int x2 = (int) Math.floor(end.x);
-        int z2 = (int) Math.floor(end.z);
-        int y = (int) Math.floor(Math.min(start.y, end.y)) + yOffset;
+            for (int x = minX; x <= maxX; x++) {
+                for (int z = minZ; z <= maxZ; z++) {
+                    BlockPos pos = new BlockPos(x, y, z);
 
-        int dx = Math.abs(x2 - x1);
-        int dz = Math.abs(z2 - z1);
-        int sx = x1 < x2 ? 1 : -1;
-        int sz = z1 < z2 ? 1 : -1;
-        int err = dx - dz;
-
-        while (true) {
-            positions.add(new BlockPos(x1, y, z1));
-            if (x1 == x2 && z1 == z2) break;
-            int e2 = 2 * err;
-            if (e2 > -dz) {
-                err -= dz;
-                x1 += sx;
-            }
-            if (e2 < dx) {
-                err += dx;
-                z1 += sz;
+                    if (!placePositions.contains(pos)) {
+                        placePositions.add(pos);
+                    }
+                }
             }
         }
-        return positions;
+
+        placePositions.sort(Comparator.comparingDouble(pos -> target.squaredDistanceTo(pos.toCenterPos())));
     }
 }

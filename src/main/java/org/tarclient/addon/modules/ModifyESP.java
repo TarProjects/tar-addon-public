@@ -16,6 +16,7 @@ import org.tarclient.addon.utils.DuelChangeUtils;
 
 public class ModifyESP extends TarModule {
     private final SettingGroup sgGeneral = settings.createGroup("General");
+    private final SettingGroup sgLimits = settings.createGroup("Limits");
     private final SettingGroup sgRender = settings.createGroup("Render");
 
     private final Setting<Integer> range = sgGeneral.add(new IntSetting.Builder()
@@ -43,6 +44,40 @@ public class ModifyESP extends TarModule {
         .sliderRange(0, 128)
         .build()
     );
+
+    /* --- Limits --- */
+    private final Setting<Integer> minX = sgLimits.add(new IntSetting.Builder()
+        .name("min-x")
+        .description("Minimum X value allowed for air rendering")
+        .defaultValue(-300)
+        .sliderRange(-300, 300)
+        .build()
+    );
+
+    private final Setting<Integer> maxX = sgLimits.add(new IntSetting.Builder()
+        .name("max-x")
+        .description("Maximum X value allowed for air rendering")
+        .defaultValue(300)
+        .sliderRange(-300, 300)
+        .build()
+    );
+
+    private final Setting<Integer> minZ = sgLimits.add(new IntSetting.Builder()
+        .name("min-z")
+        .description("Minimum Z value allowed for air rendering")
+        .defaultValue(-300)
+        .sliderRange(-300, 300)
+        .build()
+    );
+
+    private final Setting<Integer> maxZ = sgLimits.add(new IntSetting.Builder()
+        .name("max-z")
+        .description("Maximum Z value allowed for air rendering")
+        .defaultValue(300)
+        .sliderRange(-300, 300)
+        .build()
+    );
+
 
     private final Setting<ShapeMode> shapeMode = sgRender.add(new EnumSetting.Builder<ShapeMode>()
         .name("shape-mode")
@@ -117,6 +152,10 @@ public class ModifyESP extends TarModule {
             for (int dz = -airRange.get(); dz <= airRange.get(); dz++) {
                 int x = blockX + dx;
                 int z = blockZ + dz;
+                // limits
+                if (x < minX.get() || x > maxX.get()) continue;
+                if (z < minZ.get() || z > maxZ.get()) continue;
+
                 BlockPos pos = new BlockPos(x, airY.get(), z);
 
                 BlockState state = mc.world.getBlockState(pos);

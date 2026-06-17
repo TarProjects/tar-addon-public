@@ -16,6 +16,13 @@ public class MioCompatibility extends TarModule {
         .build()
     );
 
+    public final Setting<Boolean> blockPlaceRotation = sgGeneral.add(new BoolSetting.Builder()
+        .name("block-place-rotation")
+        .description("Rotates on vanilla block place")
+        .defaultValue(true)
+        .build()
+    );
+
     public final Setting<String> mioPrefix = sgGeneral.add(new StringSetting.Builder()
         .name("mio-prefix")
         .description("Mio prefix")

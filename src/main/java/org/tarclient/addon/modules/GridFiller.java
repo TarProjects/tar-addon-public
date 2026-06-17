@@ -28,6 +28,7 @@ import static meteordevelopment.meteorclient.utils.world.BlockUtils.getClosestPl
 
 public class GridFiller extends TarModule {
     private final SettingGroup sgGeneral = this.settings.getDefaultGroup();
+    private final SettingGroup sgLimits = settings.createGroup("Limits");
     private final SettingGroup sgRender = settings.createGroup("Render");
 
     private final Setting<Double> range = sgGeneral.add(new DoubleSetting.Builder()
@@ -69,6 +70,40 @@ public class GridFiller extends TarModule {
         .sliderRange(0, 10)
         .build()
     );
+
+    /* --- Limits --- */
+    private final Setting<Integer> minX = sgLimits.add(new IntSetting.Builder()
+        .name("min-x")
+        .description("Minimum X value allowed")
+        .defaultValue(-300)
+        .sliderRange(-300, 300)
+        .build()
+    );
+
+    private final Setting<Integer> maxX = sgLimits.add(new IntSetting.Builder()
+        .name("max-x")
+        .description("Maximum X value allowed")
+        .defaultValue(300)
+        .sliderRange(-300, 300)
+        .build()
+    );
+
+    private final Setting<Integer> minZ = sgLimits.add(new IntSetting.Builder()
+        .name("min-z")
+        .description("Minimum Z value allowed")
+        .defaultValue(-300)
+        .sliderRange(-300, 300)
+        .build()
+    );
+
+    private final Setting<Integer> maxZ = sgLimits.add(new IntSetting.Builder()
+        .name("max-z")
+        .description("Maximum Z value allowed")
+        .defaultValue(300)
+        .sliderRange(-300, 300)
+        .build()
+    );
+
 
     /* --- Render --- */
     private final Setting<Double> fadeTime = sgRender.add(new DoubleSetting.Builder()
@@ -163,15 +198,23 @@ public class GridFiller extends TarModule {
             return;
         }
 
-        HashSet<BlockPos> placeQueue = new HashSet<>();
+        Set<BlockPos> tracked = DuelChangeUtils.getArenaBlocks(arena);
+        List<BlockPos> validBlocks = new ArrayList<>();
 
         for (int dx = -scanRange.get(); dx <= scanRange.get(); dx++) {
             for (int dz = -scanRange.get(); dz <= scanRange.get(); dz++) {
-                if (placeQueue.size() >= blocksPerTick.get()) break;
+                int x = mc.player.getBlockX() + dx;
+                int z = mc.player.getBlockZ() + dz;
 
-                BlockPos pos = new BlockPos(mc.player.getBlockX() + dx, y.get(), mc.player.getBlockZ() + dz);
+                // limits
+                if (x < minX.get() || x > maxX.get()) continue;
+                if (z < minZ.get() || z > maxZ.get()) continue;
 
-                if (pos.getY() != y.get()) continue;
+                BlockPos pos = new BlockPos(x, y.get(), z);
+
+                if (!BlockUtils.canPlace(pos)) continue;
+
+                if (tracked.contains(pos) || TarBlockUtils.isAdjacentToAny(pos, tracked)) continue;
 
                 Direction placeSide = getClosestPlaceSide(pos);
                 if (placeSide == null) continue;
@@ -183,39 +226,38 @@ public class GridFiller extends TarModule {
                 double distance = mc.player.getEyePos().squaredDistanceTo(vec);
                 if (distance > range.get() * range.get()) continue;
 
-                if (!isValidPlacement(arena, placeQueue, pos)) continue;
-
-                placeQueue.add(pos);
+                validBlocks.add(pos);
             }
+        }
+
+        validBlocks.sort(Comparator.comparingDouble(TarBlockUtils::getSquaredDistanceClosest));
+
+        // adjacent filtering
+        Set<BlockPos> placeQueue = new LinkedHashSet<>();
+        for (BlockPos pos : validBlocks) {
+            if (TarBlockUtils.isAdjacentToAny(pos, placeQueue)) continue;
+
+            placeQueue.add(pos);
 
             if (placeQueue.size() >= blocksPerTick.get()) break;
         }
 
         for (BlockPos pos : placeQueue) {
-            Rotations.rotate(Rotations.getYaw(pos), Rotations.getPitch(pos), () -> {
+            Rotations.rotate(TarBlockUtils.getClosestYaw(pos), TarBlockUtils.getClosestPitch(pos), () -> {
                 TarBlockUtils.place(pos, false, true, Blocks.OBSIDIAN, (blockHitResult) -> {
                     FindItemResult obby = InvUtils.findInHotbar(Items.OBSIDIAN);
                     if (!obby.found()) return;
+
                     InvUtils.swap(obby.slot(), true);
                     BlockUtils.interact(blockHitResult, obby.getHand(), true);
                     InvUtils.swapBack();
 
                     renderQueue.put(pos, fadeTime.get());
 
-                    // since we placed, apply cooldown to next tick
+                    // Apply cooldown to next tick
                     globalCooldown = cooldown.get();
                 });
             });
         }
-    }
-
-    private boolean isValidPlacement(String arena, Set<BlockPos> placedThisBatch, BlockPos pos) {
-        if (!BlockUtils.canPlace(pos)) return false;
-
-        // Adjacent to persistent tracked changes?
-        Set<BlockPos> tracked = DuelChangeUtils.getArenaBlocks(arena);
-        if (placedThisBatch.contains(pos) || tracked.contains(pos)) return false;
-
-        return !TarBlockUtils.isAdjacentToAny(pos, placedThisBatch) && !TarBlockUtils.isAdjacentToAny(pos, tracked);
     }
 }

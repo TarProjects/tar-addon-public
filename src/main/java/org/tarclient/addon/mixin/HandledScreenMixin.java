@@ -2,23 +2,37 @@ package org.tarclient.addon.mixin;
 
 import meteordevelopment.meteorclient.systems.modules.Modules;
 import net.minecraft.client.gui.screen.ingame.HandledScreen;
+import net.minecraft.client.gui.screen.ingame.InventoryScreen;
 import net.minecraft.client.network.ClientPlayerInteractionManager;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.entity.player.PlayerInventory;
 import net.minecraft.item.ItemStack;
+import net.minecraft.screen.PlayerScreenHandler;
+import net.minecraft.screen.ScreenHandler;
 import net.minecraft.screen.slot.Slot;
 import net.minecraft.screen.slot.SlotActionType;
+import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Redirect;
 import org.tarclient.addon.modules.VirtualHotbar;
 import org.tarclient.addon.utils.VirtualHotbarUtils;
 
+// mixin moment, have to suppress warnings...
+@SuppressWarnings("ConstantConditions")
 @Mixin(HandledScreen.class)
-public class HandledScreenMixin {
+public class HandledScreenMixin<T extends ScreenHandler> {
+    @Shadow
+    @Final
+    protected T handler;
+
     @Redirect(method = "drawSlot", at = @At(value = "INVOKE", target = "Lnet/minecraft/screen/slot/Slot;getStack()Lnet/minecraft/item/ItemStack;"))
     private ItemStack modifyItemStack(Slot instance) {
+        if (!((Object) this instanceof InventoryScreen)) return instance.getStack();
         if (!(instance.inventory instanceof PlayerInventory inventory)) return instance.getStack();
+
+        System.out.println(inventory.getClass().getName());
 
         VirtualHotbar virtualHotbar = Modules.get().get(VirtualHotbar.class);
         if (virtualHotbar != null && virtualHotbar.isActive()) {
@@ -33,6 +47,11 @@ public class HandledScreenMixin {
 
     @Redirect(method = "onMouseClick(Lnet/minecraft/screen/slot/Slot;IILnet/minecraft/screen/slot/SlotActionType;)V", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/network/ClientPlayerInteractionManager;clickSlot(IIILnet/minecraft/screen/slot/SlotActionType;Lnet/minecraft/entity/player/PlayerEntity;)V"))
     private void modifyClickSlot(ClientPlayerInteractionManager instance, int syncId, int slotId, int button, SlotActionType actionType, PlayerEntity player) {
+        if (!((Object) this instanceof InventoryScreen) || !(this.handler instanceof PlayerScreenHandler)) {
+            instance.clickSlot(syncId, slotId, button, actionType, player);
+            return;
+        }
+
         VirtualHotbar virtualHotbar = Modules.get().get(VirtualHotbar.class);
         if (virtualHotbar == null || !virtualHotbar.isActive()) {
             instance.clickSlot(syncId, slotId, button, actionType, player);
@@ -63,6 +82,7 @@ public class HandledScreenMixin {
 
     @Redirect(method = "drawMouseoverTooltip", at = @At(value = "INVOKE", target = "Lnet/minecraft/screen/slot/Slot;getStack()Lnet/minecraft/item/ItemStack;"))
     private ItemStack onDrawMouseOverToolTip$getStack(Slot instance) {
+        if (!((Object) this instanceof InventoryScreen)) return instance.getStack();
         if (!(instance.inventory instanceof PlayerInventory inventory)) return instance.getStack();
 
         VirtualHotbar virtualHotbar = Modules.get().get(VirtualHotbar.class);

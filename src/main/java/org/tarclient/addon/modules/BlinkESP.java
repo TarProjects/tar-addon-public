@@ -1,34 +1,34 @@
 package org.tarclient.addon.modules;
 
+import com.google.common.collect.Sets;
+import meteordevelopment.meteorclient.events.entity.EntityRemovedEvent;
 import meteordevelopment.meteorclient.events.packets.PacketEvent;
 import meteordevelopment.meteorclient.events.render.Render3DEvent;
-import meteordevelopment.meteorclient.events.world.TickEvent;
 import meteordevelopment.meteorclient.renderer.ShapeMode;
 import meteordevelopment.meteorclient.settings.*;
 import meteordevelopment.meteorclient.utils.Utils;
 import meteordevelopment.meteorclient.utils.render.color.SettingColor;
 import meteordevelopment.orbit.EventHandler;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.data.DataTracker;
 import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.network.packet.s2c.play.EntityTrackerUpdateS2CPacket;
+import net.minecraft.network.packet.s2c.play.PlayerListS2CPacket;
 import net.minecraft.util.math.Vec3d;
 import org.tarclient.addon.TarAddon;
 import org.tarclient.addon.TarModule;
 
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class BlinkESP extends TarModule {
     private final SettingGroup sgGeneral = settings.createGroup("General");
     private final SettingGroup sgRender = settings.createGroup("Render");
 
-    private final Setting<Integer> timeout = sgGeneral.add(new IntSetting.Builder()
-        .name("timeout")
-        .description("Ticks to wait before assuming blinking after sprint start.")
-        .defaultValue(20)
+    private final Setting<Integer> cycles = sgGeneral.add(new IntSetting.Builder()
+        .name("cycles")
+        .description("Cycles skipped before lagging")
+        .defaultValue(1)
+        .sliderRange(1, 10)
         .min(1)
-        .sliderMax(100)
         .build()
     );
 
@@ -50,8 +50,10 @@ public class BlinkESP extends TarModule {
         .build()
     );
 
-    private final Map<PlayerEntity, Integer> pending = new ConcurrentHashMap<>();
-    private int tickCounter = 0;
+    private final Map<UUID, Long> lastUpdated = new ConcurrentHashMap<>();
+    private final Set<UUID> lagging = Sets.newConcurrentHashSet();
+
+    private final AtomicLong currentCycle = new AtomicLong(0);
 
     public BlinkESP() {
         super(TarAddon.CATEGORY, "blink-esp", "Highlights blinking players");
@@ -59,65 +61,55 @@ public class BlinkESP extends TarModule {
 
     @Override
     public void onActivate() {
-        pending.clear();
-        tickCounter = 0;
+        currentCycle.set(0);
+        lastUpdated.clear();
+        lagging.clear();
     }
 
     @EventHandler
     private void onPacketReceive(PacketEvent.Receive event) {
         if (!Utils.canUpdate()) return;
-        if (event.packet instanceof EntityTrackerUpdateS2CPacket(
-            int id, java.util.List<DataTracker.SerializedEntry<?>> trackedValues
-        )) {
-            mc.execute(() -> {
-                if (mc.world == null) return;
-                Entity entity = mc.world.getEntityById(id);
-                if (!(entity instanceof PlayerEntity player)) return;
+        if (!(event.packet instanceof PlayerListS2CPacket packet)) return;
 
-                for (DataTracker.SerializedEntry<?> entry : trackedValues) {
-                    if (entry.id() == 0 && entry.value() instanceof Byte flags) {
-                        if (player != mc.player && (flags & 0x08) != 0 && !pending.containsKey(player)) {
-                            pending.put(player, tickCounter);
-                        }
-                        break;
-                    }
+        if (packet.getActions().size() == 1 && packet.getActions().contains(PlayerListS2CPacket.Action.UPDATE_LATENCY)) {
+            long current = currentCycle.incrementAndGet();
+
+            for (PlayerListS2CPacket.Entry entry : packet.getEntries()) {
+                lastUpdated.put(entry.profileId(), current);
+            }
+
+            for (UUID uuid : lastUpdated.keySet()) {
+                if (current - lastUpdated.getOrDefault(uuid, current) >= cycles.get()) {
+                    lagging.add(uuid);
+                } else {
+                    lagging.remove(uuid);
                 }
-            });
+            }
         }
     }
 
     @EventHandler
-    private void onTick(TickEvent.Pre event) {
-        if (!Utils.canUpdate()) return;
-        tickCounter++;
-
-        pending.entrySet().removeIf(entry -> {
-            PlayerEntity player = entry.getKey();
-            if (player.isRemoved()) return true;
-
-            return player.getX() != player.lastX ||
-                player.getY() != player.lastY ||
-                player.getZ() != player.lastZ;
-        });
+    private void onRemove(EntityRemovedEvent event) {
+        UUID uuid = event.entity.getUuid();
+        lagging.remove(uuid);
+        lastUpdated.remove(uuid);
     }
 
     @EventHandler
     private void onRender(Render3DEvent event) {
         if (mc.world == null) return;
+        for (PlayerEntity player : mc.world.getPlayers()) {
+            if (player == mc.player) continue;
+            if (!lagging.contains(player.getUuid())) continue;
 
-        for (Map.Entry<PlayerEntity, Integer> entry : pending.entrySet()) {
-            PlayerEntity player = entry.getKey();
+            Vec3d pos = player.getLerpedPos(event.tickDelta);
+            double x = pos.x, y = pos.y, z = pos.z;
+            double width = 0.6, height = 1.6;
+            double minX = x - width / 2, maxX = x + width / 2;
+            double minZ = z - width / 2, maxZ = z + width / 2;
+            double maxY = y + height;
 
-            if (tickCounter - entry.getValue() >= timeout.get()) {
-                Vec3d pos = player.getEntityPos();
-                double x = pos.x, y = pos.y, z = pos.z;
-                double width = 0.6, height = 1.6;
-                double minX = x - width / 2, maxX = x + width / 2;
-                double minZ = z - width / 2, maxZ = z + width / 2;
-                double maxY = y + height;
-
-                event.renderer.box(minX, y, minZ, maxX, maxY, maxZ, sideColor.get(), lineColor.get(), shapeMode.get(), 0);
-            }
+            event.renderer.box(minX, y, minZ, maxX, maxY, maxZ, sideColor.get(), lineColor.get(), shapeMode.get(), 0);
         }
     }
 }

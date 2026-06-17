@@ -6,7 +6,6 @@ import meteordevelopment.meteorclient.systems.config.Config;
 import meteordevelopment.meteorclient.systems.modules.Category;
 import meteordevelopment.meteorclient.systems.modules.Module;
 import meteordevelopment.meteorclient.utils.Utils;
-import meteordevelopment.meteorclient.utils.player.ChatUtils;
 import net.minecraft.network.packet.Packet;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
@@ -18,9 +17,12 @@ public class TarModule extends Module {
         super(category, name, desc);
     }
 
-    public void sendToggledMsg() {
+    // override default uses, and instead send always
+    @Override
+    public void sendToggledMsg() {}
+
+    public void tar$sendToggledMsg() {
         if (Config.get().chatFeedback.get() && chatFeedback && mc.world != null) {
-            ChatUtils.forceNextPrefixClass(getClass());
             // This is stupid but we can still use gray from Formatting...
             String msg = prefix + " Toggled " + Formatting.WHITE + Utils.nameToTitle(name) + (isActive() ? Formatting.GREEN + " on" : Formatting.RED + " off");
             addMsg(Text.of(msg), hashCode());
@@ -29,12 +31,11 @@ public class TarModule extends Module {
 
     public void toggle() {
         super.toggle();
-        sendToggledMsg();
+        tar$sendToggledMsg();
     }
 
     public void info(String text) {
         if (mc.world != null) {
-            ChatUtils.forceNextPrefixClass(getClass());
             String msg = prefix + Formatting.GRAY + " [" + Formatting.LIGHT_PURPLE + Utils.nameToTitle(name) + Formatting.GRAY + "] " + Formatting.GRAY + text;
             addMsg(Text.of(msg), 0);
         }
@@ -42,7 +43,6 @@ public class TarModule extends Module {
 
     public void error(String text) {
         if (mc.world != null) {
-            ChatUtils.forceNextPrefixClass(getClass());
             String msg = prefix + Formatting.GRAY + " [" + Formatting.LIGHT_PURPLE + Utils.nameToTitle(name) + Formatting.GRAY + "] " + Formatting.RED + text;
             addMsg(Text.of(msg), 0);
         }

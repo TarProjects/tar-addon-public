@@ -108,7 +108,7 @@ public class TarAddon extends MeteorAddon {
         Modules.get().add(new SpectatorInterfere());
         Modules.get().add(new TestFly());
         Modules.get().add(new TickShift());
-        Modules.get().add(new UUIDSpectator());
+        Modules.get().add(new FindUUID());
         Modules.get().add(new VirtualHotbar());
 
         // module requires/relies on baritone

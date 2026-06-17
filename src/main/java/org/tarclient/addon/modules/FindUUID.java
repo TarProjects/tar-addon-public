@@ -6,19 +6,18 @@ import meteordevelopment.meteorclient.settings.*;
 import meteordevelopment.meteorclient.utils.Utils;
 import meteordevelopment.orbit.EventHandler;
 import net.minecraft.entity.Entity;
-import net.minecraft.entity.ItemEntity;
-import net.minecraft.entity.projectile.ArrowEntity;
-import net.minecraft.entity.projectile.thrown.EnderPearlEntity;
+import net.minecraft.entity.EntityType;
 import net.minecraft.network.packet.c2s.play.SpectatorTeleportC2SPacket;
 import org.tarclient.addon.TarAddon;
 import org.tarclient.addon.TarModule;
 
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-public class UUIDSpectator extends TarModule {
+public class FindUUID extends TarModule {
     private final SettingGroup sgGeneral = this.settings.getDefaultGroup();
 
     private final Setting<Boolean> isFinder = sgGeneral.add(new BoolSetting.Builder()
@@ -40,6 +39,23 @@ public class UUIDSpectator extends TarModule {
         .name("range")
         .description("Range of finding stuff")
         .defaultValue(10)
+        .sliderRange(0, 50)
+        .visible(isFinder::get)
+        .build()
+    );
+
+    private final Setting<Set<EntityType<?>>> entities = sgGeneral.add(new EntityTypeListSetting.Builder()
+        .name("entities")
+        .description("Which entities to accept?")
+        .defaultValue(EntityType.ITEM, EntityType.ENDER_PEARL, EntityType.FALLING_BLOCK)
+        .visible(isFinder::get)
+        .build()
+    );
+
+    private final Setting<Integer> entityAge = sgGeneral.add(new IntSetting.Builder()
+        .name("entity-age")
+        .description("Checks for min entity age")
+        .defaultValue(2)
         .sliderRange(0, 20)
         .build()
     );
@@ -54,13 +70,13 @@ public class UUIDSpectator extends TarModule {
 
     private static final Pattern whisperRegex = Pattern.compile("^(\\w+) says: (.+)");
 
-    public UUIDSpectator() {
+    public FindUUID() {
         super(TarAddon.CATEGORY, "find-uuid", "Finds an uuid of an entity and sends it to the specified player");
     }
 
     @EventHandler
     private void onTick(TickEvent.Pre event) {
-        if (mc.getNetworkHandler() == null || mc.world == null) return;
+        if (mc.getNetworkHandler() == null || mc.world == null || mc.player == null) return;
         if (!isFinder.get()) return;
 
         double minDistance = -1;
@@ -102,7 +118,7 @@ public class UUIDSpectator extends TarModule {
             if (usernames.get().contains(username)) {
                 try {
                     UUID parsed = UUID.fromString(uuid);
-                    mc.getNetworkHandler().sendPacket(new SpectatorTeleportC2SPacket(parsed));
+                    sendPacket(new SpectatorTeleportC2SPacket(parsed));
                 } catch (IllegalArgumentException ignored) {
                 }
             }
@@ -110,9 +126,6 @@ public class UUIDSpectator extends TarModule {
     }
 
     public boolean valid(Entity entity) {
-        if (entity instanceof ItemEntity item && item.groundCollision) return true;
-        if (entity instanceof ArrowEntity) return true;
-        if (entity instanceof EnderPearlEntity) return true;
-        return false;
+        return entity.age >= entityAge.get() && entities.get().contains(entity.getType());
     }
 }

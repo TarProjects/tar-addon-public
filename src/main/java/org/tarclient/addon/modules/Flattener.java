@@ -333,7 +333,7 @@ public class Flattener extends TarModule {
 
         Box baseBox = target.getBoundingBox().expand(expand, 0, expand);
 
-        int y = (int) Math.floor(target.getY()) - 1; // Target the block layer right below the player
+        int y = (int) Math.floor(target.getY()) - 1;
 
         for (double i = 1; i <= predict.get(); i += 0.5) {
             Vec3d offset = new Vec3d(deltaX * i, 0, deltaZ * i);

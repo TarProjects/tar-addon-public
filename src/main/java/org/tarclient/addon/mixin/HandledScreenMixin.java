@@ -32,8 +32,6 @@ public class HandledScreenMixin<T extends ScreenHandler> {
         if (!((Object) this instanceof InventoryScreen)) return instance.getStack();
         if (!(instance.inventory instanceof PlayerInventory inventory)) return instance.getStack();
 
-        System.out.println(inventory.getClass().getName());
-
         VirtualHotbar virtualHotbar = Modules.get().get(VirtualHotbar.class);
         if (virtualHotbar != null && virtualHotbar.isActive()) {
             if (instance.id >= 36 && instance.id < 45) {

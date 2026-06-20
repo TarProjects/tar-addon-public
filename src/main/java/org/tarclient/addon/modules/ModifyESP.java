@@ -15,7 +15,7 @@ import org.tarclient.addon.TarModule;
 import org.tarclient.addon.utils.DuelChangeUtils;
 
 public class ModifyESP extends TarModule {
-    private final SettingGroup sgGeneral = settings.createGroup("General");
+    private final SettingGroup sgGeneral = settings.getDefaultGroup();
     private final SettingGroup sgLimits = settings.createGroup("Limits");
     private final SettingGroup sgRender = settings.createGroup("Render");
 

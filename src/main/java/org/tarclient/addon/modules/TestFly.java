@@ -1,19 +1,13 @@
 package org.tarclient.addon.modules;
 
-import com.mojang.authlib.GameProfile;
 import meteordevelopment.meteorclient.events.packets.PacketEvent;
 import meteordevelopment.meteorclient.events.world.TickEvent;
 import meteordevelopment.meteorclient.settings.IntSetting;
 import meteordevelopment.meteorclient.settings.Setting;
 import meteordevelopment.meteorclient.settings.SettingGroup;
 import meteordevelopment.orbit.EventHandler;
-import net.minecraft.block.BlockState;
-import net.minecraft.block.Blocks;
 import net.minecraft.entity.Entity;
-import net.minecraft.entity.EntityPosition;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.network.packet.c2s.common.ResourcePackStatusC2SPacket;
-import net.minecraft.network.packet.s2c.play.*;
+import net.minecraft.network.packet.s2c.play.EntityPositionSyncS2CPacket;
 import org.tarclient.addon.TarAddon;
 import org.tarclient.addon.TarModule;
 import org.tarclient.addon.settings.IntRange;
@@ -68,30 +62,18 @@ public class TestFly extends TarModule {
     private void onPacketSend(PacketEvent.Send event) {
 
     }
+    // setheadyaw positionsync rotateandmoverelative
 
     @EventHandler
     private void onPacketReceive(PacketEvent.Receive event) {
-        if (mc.getNetworkHandler() == null) return;
-        if (event.packet instanceof PlayerListS2CPacket packet) {
-            info(packet.getActions().toString());
+        if (mc.getNetworkHandler() == null || mc.world == null) return;
 
-            if (packet.getActions().contains(PlayerListS2CPacket.Action.UPDATE_LATENCY)) {
-                for (PlayerListS2CPacket.Entry entry : packet.getEntries()) {
-                    info(String.valueOf(entry.profileId()));
-                    mc.getNetworkHandler().getPlayerList().forEach((playerListEntry) -> {
-                        GameProfile profile = playerListEntry.getProfile();
-                        if (profile == null) return;
-                        if (!Objects.equals(profile.name(), "FreedomForSkids1")) return;
-                        if (profile.id() == entry.profileId()) {
-                            if (packet.getActions().contains(PlayerListS2CPacket.Action.UPDATE_LATENCY)) {
-                                info(String.valueOf(entry.latency()));
-                            }
-                        }
-                    });
-                }
-            }
+        if (event.packet instanceof EntityPositionSyncS2CPacket packet) {
+            Entity entity = mc.world.getEntityById(packet.id());
+            if (entity == null || entity.getName() == null || !Objects.equals(entity.getName().getString(), "FreedomForSkids"))
+                return;
 
-
+            mc.execute(() -> info(packet.values().toString()));
         }
     }
 

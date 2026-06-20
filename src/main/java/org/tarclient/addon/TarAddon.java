@@ -78,6 +78,7 @@ public class TarAddon extends MeteorAddon {
         Modules.get().add(new AutoSpectator());
         Modules.get().add(new BetterRichPresence());
         Modules.get().add(new BlinkESP());
+        Modules.get().add(new BlinkTrap());
         Modules.get().add(new BreakESP());
         Modules.get().add(new ChinaExploit());
         Modules.get().add(new ChorusESP());

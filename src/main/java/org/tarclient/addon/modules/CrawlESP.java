@@ -26,7 +26,7 @@ import java.util.List;
 import java.util.Objects;
 
 public class CrawlESP extends TarModule {
-    private final SettingGroup sgGeneral = settings.createGroup("General");
+    private final SettingGroup sgGeneral = settings.getDefaultGroup();
     private final SettingGroup sgRender = settings.createGroup("Render");
 
     private final Setting<Integer> horizontalRadius = sgGeneral.add(new IntSetting.Builder()

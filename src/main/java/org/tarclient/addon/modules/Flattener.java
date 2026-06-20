@@ -265,9 +265,9 @@ public class Flattener extends TarModule {
             if (mc.player.squaredDistanceTo(blockPos.toCenterPos()) > range.get() * range.get()) continue;
             if (!BlockUtils.canPlace(blockPos)) continue;
 
-            if (placed > blocksPerTick.get() || obby.count() - placed <= 0) break;
+            if (placed >= blocksPerTick.get() || obby.count() - placed <= 0) break;
 
-            TarBlockUtils.place(blockPos, false, true, Blocks.OBSIDIAN, (blockHitResult) -> {
+            boolean didPlace = TarBlockUtils.place(blockPos, false, true, Blocks.OBSIDIAN, (blockHitResult) -> {
                 float yaw = (float) Rotations.getYaw(blockHitResult.getPos());
                 float pitch = (float) Rotations.getPitch(blockHitResult.getPos());
                 sendPacket(new PlayerMoveC2SPacket.Full(mc.player.getEntityPos(), yaw, pitch, mc.player.isOnGround(), mc.player.horizontalCollision));
@@ -280,7 +280,9 @@ public class Flattener extends TarModule {
                 renderQueue.put(blockPos, fadeTime.get());
             });
 
-            placed++;
+            if (didPlace) {
+                placed++;
+            }
         }
 
         InvUtils.swapBack();

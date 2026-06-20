@@ -25,7 +25,9 @@ import java.util.regex.Pattern;
 public class ArenaReset extends TarModule {
     private static final Pattern UPTIME_PATTERN = Pattern.compile("uptime\\s+((?:\\d+w\\s*)?(?:\\d+d\\s*)?(?:\\d+h\\s*)?(?:\\d+m\\s*)?(?:\\d+s)?)");
     private static final String SERVER_ARENA_CLEANUP = "{SERVER} SERVER FFA ARENA IS CLEARING";
-    private final SettingGroup sgGeneral = settings.createGroup("General");
+
+    private final SettingGroup sgGeneral = settings.getDefaultGroup();
+
     private final Setting<Boolean> warn = sgGeneral.add(new BoolSetting.Builder()
         .name("warn")
         .description("Warns the user before arena reset on 2min, 1min, 30sec, 10 second countdown")

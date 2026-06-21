@@ -11,7 +11,6 @@ import meteordevelopment.meteorclient.systems.friends.Friends;
 import meteordevelopment.meteorclient.utils.Utils;
 import meteordevelopment.meteorclient.utils.player.FindItemResult;
 import meteordevelopment.meteorclient.utils.player.InvUtils;
-import meteordevelopment.meteorclient.utils.player.PlayerUtils;
 import meteordevelopment.meteorclient.utils.player.Rotations;
 import meteordevelopment.meteorclient.utils.render.color.Color;
 import meteordevelopment.meteorclient.utils.render.color.SettingColor;
@@ -121,7 +120,21 @@ public class BlinkTrap extends TarModule {
         .build()
     );
 
-    // ADD SNEAK SUPRESSION MODE
+    private final Setting<Boolean> resetOnCorner = sgDetection.add(new BoolSetting.Builder()
+        .name("reset-on-corner")
+        .description("Less detection and less falses")
+        .defaultValue(true)
+        .visible(() -> lagDetectionMethod.get().sprint())
+        .build()
+    );
+
+    private final Setting<Boolean> resetCounter = sgDetection.add(new BoolSetting.Builder()
+        .name("reset-counter")
+        .description("If target isnt sprinting for exactly N ticks, reset counter")
+        .defaultValue(true)
+        .visible(() -> lagDetectionMethod.get().sprint())
+        .build()
+    );
 
     /* --- Render --- */
     private final Setting<Double> fadeTime = sgRender.add(new DoubleSetting.Builder()
@@ -212,75 +225,84 @@ public class BlinkTrap extends TarModule {
     }
 
     private void handleSprintPackets(Packet<?> packet) {
-        if (mc.world == null) return;
-
         if (packet instanceof EntityPositionSyncS2CPacket(int id, EntityPosition values, boolean onGround)) {
-            Entity entity = mc.world.getEntityById(id);
-            if (!(entity instanceof PlayerEntity)) return;
+            mc.execute(() -> {
+                if (mc.world == null) return;
 
-            PlayerState state = getState(entity.getUuid());
+                Entity entity = mc.world.getEntityById(id);
+                if (!(entity instanceof PlayerEntity player)) return;
 
-            double x = values.position().x;
-            double y = values.position().y;
-            double z = values.position().z;
+                PlayerState state = getState(entity.getUuid());
 
-            float yaw = values.yaw();
-            float pitch = values.pitch();
+                double x = values.position().x;
+                double y = values.position().y;
+                double z = values.position().z;
 
-            boolean moved = x != state.x || y != state.y || z != state.z;
-            boolean rotated = yaw != state.yaw || pitch != state.pitch;
+                float yaw = values.yaw();
+                float pitch = values.pitch();
 
-            state.x = x;
-            state.y = y;
-            state.z = z;
-            state.yaw = yaw;
-            state.pitch = pitch;
+                boolean moved = x != state.x || y != state.y || z != state.z;
+                boolean rotated = yaw != state.yaw || pitch != state.pitch;
 
-            if (moved || rotated) {
-                state.stationarySprintCycles = 0;
-                state.blinking = false;
-            } else {
-                if (state.sprinting) {
-                    state.stationarySprintCycles++;
+                state.x = x;
+                state.y = y;
+                state.z = z;
+                state.yaw = yaw;
+                state.pitch = pitch;
+
+                if (moved || rotated) {
+                    state.stationarySprintCycles = 0;
+                    state.blinking = false;
+                } else {
+                    if (state.sprinting) {
+                        if (!resetOnCorner.get() || !isAgainstWall(player)) {
+                            state.stationarySprintCycles++;
+                        }
+                    } else if (resetCounter.get()){
+                        state.stationarySprintCycles = 0;
+                    }
+
+                    if (state.stationarySprintCycles >= sprintCycles.get()) {
+                        state.blinking = true;
+                    }
                 }
-
-                if (state.stationarySprintCycles >= sprintCycles.get()) {
-                    state.blinking = true;
-                }
-            }
+            });
         }
-
         if (packet instanceof EntityTrackerUpdateS2CPacket(
             int id, java.util.List<DataTracker.SerializedEntry<?>> trackedValues
         )) {
-            Entity entity = mc.world.getEntityById(id);
-            if (!(entity instanceof PlayerEntity)) return;
+            mc.execute(() -> {
+                if (mc.world == null) return;
 
-            PlayerState state = getState(entity.getUuid());
+                Entity entity = mc.world.getEntityById(id);
+                if (!(entity instanceof PlayerEntity)) return;
 
-            for (DataTracker.SerializedEntry<?> entry : trackedValues) {
-                if (entry.id() == 0 && entry.value() instanceof Byte flags) {
-                    boolean wasSneaking = state.sneaking;
-                    boolean wasSprinting = state.sprinting;
+                PlayerState state = getState(entity.getUuid());
 
-                    boolean newSneaking = (flags & 0x02) != 0;
-                    boolean newSprinting = (flags & 0x08) != 0;
+                for (DataTracker.SerializedEntry<?> entry : trackedValues) {
+                    if (entry.id() == 0 && entry.value() instanceof Byte flags) {
+                        boolean wasSneaking = state.sneaking;
+                        boolean wasSprinting = state.sprinting;
 
-                    // fix: player sprinting against a wall -> start sneak -> stop sneak will
-                    // make the player send a sprint instead. ignore this by using this
-                    // weird logic...
+                        boolean newSneaking = (flags & 0x02) != 0;
+                        boolean newSprinting = (flags & 0x08) != 0;
 
-                    // works for now I guess
-                    if (wasSneaking && !newSneaking && !wasSprinting && newSprinting) {
-                        // ignore sprint state change
-                    } else {
-                        state.sprinting = newSprinting;
+                        // fix: player sprinting against a wall -> start sneak -> stop sneak will
+                        // make the player send a sprint instead. ignore this by using this
+                        // weird logic...
+
+                        // works for now I guess
+                        if (wasSneaking && !newSneaking && !wasSprinting && newSprinting) {
+                            // ignore sprint state change
+                        } else {
+                            state.sprinting = newSprinting;
+                        }
+
+                        state.sneaking = newSneaking;
+                        break;
                     }
-
-                    state.sneaking = newSneaking;
-                    break;
                 }
-            }
+            });
         }
     }
 
@@ -441,6 +463,58 @@ public class BlinkTrap extends TarModule {
 
             entry.setValue(remaining - (float) event.frameTime);
         }
+    }
+
+    private boolean isAgainstWall(PlayerEntity player) {
+        if (mc.world == null) return false;
+
+        double x = player.getX();
+        double y = player.getY();
+        double z = player.getZ();
+
+        final double TOLERANCE = 0.005;
+        double fracX = x - Math.floor(x);
+        double fracZ = z - Math.floor(z);
+
+        int xOffset = 0;
+        int zOffset = 0;
+        boolean huggingX = false;
+        boolean huggingZ = false;
+
+        if (Math.abs(fracX - 0.3) < TOLERANCE) {
+            xOffset = -1;
+            huggingX = true;
+        } else if (Math.abs(fracX - 0.7) < TOLERANCE) {
+            xOffset = 1;
+            huggingX = true;
+        }
+
+        if (Math.abs(fracZ - 0.3) < TOLERANCE) {
+            zOffset = -1;
+            huggingZ = true;
+        } else if (Math.abs(fracZ - 0.7) < TOLERANCE) {
+            zOffset = 1;
+            huggingZ = true;
+        }
+
+        if (!huggingX || !huggingZ) return false;
+
+        int baseX = (int) Math.floor(x);
+        int baseZ = (int) Math.floor(z);
+        int feetY = (int) Math.floor(y);
+        int headY = (int) Math.floor(y + 1.0);
+
+        BlockPos xWallFeet = new BlockPos(baseX + xOffset, feetY, baseZ);
+        BlockPos xWallHead = new BlockPos(baseX + xOffset, headY, baseZ);
+        boolean xBlocked = mc.world.getBlockState(xWallFeet).isSolidBlock(mc.world, xWallFeet) ||
+            mc.world.getBlockState(xWallHead).isSolidBlock(mc.world, xWallHead);
+
+        BlockPos zWallFeet = new BlockPos(baseX, feetY, baseZ + zOffset);
+        BlockPos zWallHead = new BlockPos(baseX, headY, baseZ + zOffset);
+        boolean zBlocked = mc.world.getBlockState(zWallFeet).isSolidBlock(mc.world, zWallFeet) ||
+            mc.world.getBlockState(zWallHead).isSolidBlock(mc.world, zWallHead);
+
+        return xBlocked && zBlocked;
     }
 
     private boolean isBlinking(PlayerEntity player) {

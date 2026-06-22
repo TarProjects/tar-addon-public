@@ -53,7 +53,7 @@ public class AutoEZ extends TarModule {
 
         if (matcher.find()) {
             String death = matcher.group(1);
-            // Why tf am i naming this killer idk
+            // Why tf am I naming this killer IDK
             String killer = matcher.group(3);
             int eloDeath = Integer.parseInt(matcher.group(2));
             // int eloKiller = Integer.parseInt(matcher.group(4));

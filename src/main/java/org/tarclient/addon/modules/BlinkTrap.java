@@ -11,6 +11,7 @@ import meteordevelopment.meteorclient.systems.friends.Friends;
 import meteordevelopment.meteorclient.utils.Utils;
 import meteordevelopment.meteorclient.utils.player.FindItemResult;
 import meteordevelopment.meteorclient.utils.player.InvUtils;
+import meteordevelopment.meteorclient.utils.player.PlayerUtils;
 import meteordevelopment.meteorclient.utils.player.Rotations;
 import meteordevelopment.meteorclient.utils.render.color.Color;
 import meteordevelopment.meteorclient.utils.render.color.SettingColor;
@@ -61,9 +62,16 @@ public class BlinkTrap extends TarModule {
         .build()
     );
 
-    private final Setting<Boolean> onlyOnHole = sgGeneral.add(new BoolSetting.Builder()
-        .name("only-on-hole")
+    private final Setting<Boolean> onlyWhenTargetInHole = sgGeneral.add(new BoolSetting.Builder()
+        .name("only-when-target-in-hole")
         .description("Only places if target is in hole")
+        .defaultValue(true)
+        .build()
+    );
+
+    private final Setting<Boolean> onlyWhenSelfInHole = sgGeneral.add(new BoolSetting.Builder()
+        .name("only-when-self-in-hole")
+        .description("Only places if you is in hole")
         .defaultValue(true)
         .build()
     );
@@ -113,16 +121,15 @@ public class BlinkTrap extends TarModule {
     private final Setting<Integer> sprintCycles = sgDetection.add(new IntSetting.Builder()
         .name("sprint-cycles")
         .description("Sprint move/rotation packet cycles skipped before lagging")
-        .defaultValue(2)
+        .defaultValue(3)
         .sliderRange(1, 20)
         .min(1)
         .visible(() -> lagDetectionMethod.get().sprint())
         .build()
     );
-
     private final Setting<Boolean> resetOnCorner = sgDetection.add(new BoolSetting.Builder()
         .name("reset-on-corner")
-        .description("Less detection and less falses")
+        .description("Less detection and less false detections")
         .defaultValue(true)
         .visible(() -> lagDetectionMethod.get().sprint())
         .build()
@@ -130,8 +137,8 @@ public class BlinkTrap extends TarModule {
 
     private final Setting<Boolean> resetCounter = sgDetection.add(new BoolSetting.Builder()
         .name("reset-counter")
-        .description("If target isnt sprinting for exactly N ticks, reset counter")
-        .defaultValue(true)
+        .description("If target isn't sprinting for exactly N ticks, reset counter")
+        .defaultValue(false)
         .visible(() -> lagDetectionMethod.get().sprint())
         .build()
     );
@@ -168,7 +175,7 @@ public class BlinkTrap extends TarModule {
     // uuid -> sprinting & move state
     private final Map<UUID, PlayerState> states = new ConcurrentHashMap<>();
 
-    /* all of the lag detection stuff */
+    /* all the lag detection stuff */
     private final Map<UUID, Long> lastUpdated = new ConcurrentHashMap<>();
     private final Set<UUID> lagging = Sets.newConcurrentHashSet();
     private final AtomicLong currentCycle = new AtomicLong(0);
@@ -206,7 +213,7 @@ public class BlinkTrap extends TarModule {
     private void handlePlayerList(PlayerListS2CPacket packet) {
         if (packet.getActions().contains(PlayerListS2CPacket.Action.UPDATE_LATENCY)) {
             long current = currentCycle.get();
-            // size() == 1 means that the only action is updatelatency, which corresponds
+            // size() == 1 means that the only action is UPDATE_LATENCY, which corresponds
             // to a normal cycle. only increment cycles on those
             if (packet.getActions().size() == 1) current = currentCycle.incrementAndGet();
 
@@ -328,6 +335,8 @@ public class BlinkTrap extends TarModule {
             return;
         }
 
+        if (onlyWhenSelfInHole.get() && !PlayerUtils.isInHole(true)) return;
+
         for (PlayerEntity target : mc.world.getPlayers()) {
             if (target == mc.player) continue;
             if (!isBlinking(target)) continue;
@@ -335,7 +344,7 @@ public class BlinkTrap extends TarModule {
             // each blinking player here
             if (!Friends.get().shouldAttack(target)) continue;
             if (mc.player.squaredDistanceTo(target) > targetRange.get() * targetRange.get()) continue;
-            if (onlyOnHole.get() && !HoleUtils.isInHole(target.getBlockPos(), true)) continue;
+            if (onlyWhenTargetInHole.get() && !HoleUtils.isInHole(target.getBlockPos(), true)) continue;
             findPlacePositions(target);
         }
 

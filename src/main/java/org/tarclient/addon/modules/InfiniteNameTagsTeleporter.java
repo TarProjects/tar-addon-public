@@ -88,7 +88,7 @@ public class InfiniteNameTagsTeleporter extends TarModule {
                 while (server.running()) {
                     server.acceptClient();
                     server.readLoop();
-                    // readloop done, client has exited!
+                    // read loop done, client has exited!
 
                     // constantly repeat this: do action -> when client exits clear everything
                     server.close();

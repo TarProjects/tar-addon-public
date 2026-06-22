@@ -54,7 +54,7 @@ public class BlinkESP extends TarModule {
     private final Setting<Integer> sprintCycles = sgDetection.add(new IntSetting.Builder()
         .name("sprint-cycles")
         .description("Sprint move/rotation packet cycles skipped before lagging")
-        .defaultValue(2)
+        .defaultValue(3)
         .sliderRange(1, 20)
         .min(1)
         .visible(() -> lagDetectionMethod.get().sprint())
@@ -62,7 +62,7 @@ public class BlinkESP extends TarModule {
     );
     private final Setting<Boolean> resetOnCorner = sgDetection.add(new BoolSetting.Builder()
         .name("reset-on-corner")
-        .description("Less detection and less falses")
+        .description("Less detection and less false detections")
         .defaultValue(true)
         .visible(() -> lagDetectionMethod.get().sprint())
         .build()
@@ -70,12 +70,11 @@ public class BlinkESP extends TarModule {
 
     private final Setting<Boolean> resetCounter = sgDetection.add(new BoolSetting.Builder()
         .name("reset-counter")
-        .description("If target isnt sprinting for exactly N ticks, reset counter")
-        .defaultValue(true)
+        .description("If target isn't sprinting for exactly N ticks, reset counter")
+        .defaultValue(false)
         .visible(() -> lagDetectionMethod.get().sprint())
         .build()
     );
-
 
     /* --- Render --- */
     private final Setting<ShapeMode> shapeMode = sgRender.add(new EnumSetting.Builder<ShapeMode>()
@@ -99,7 +98,7 @@ public class BlinkESP extends TarModule {
     // uuid -> sprinting & move state
     private final Map<UUID, PlayerState> states = new ConcurrentHashMap<>();
 
-    // we need to do this in such a way where we dont accidentally skip anything...
+    // we need to do this in such a way where we don't accidentally skip anything...
     // this is why everything is done in network & rendering and NOT on tick
     private final Map<UUID, Long> lastUpdated = new ConcurrentHashMap<>();
     private final Set<UUID> lagging = Sets.newConcurrentHashSet();
@@ -135,7 +134,7 @@ public class BlinkESP extends TarModule {
     private void handlePlayerList(PlayerListS2CPacket packet) {
         if (packet.getActions().contains(PlayerListS2CPacket.Action.UPDATE_LATENCY)) {
             long current = currentCycle.get();
-            // size() == 1 means that the only action is updatelatency, which corresponds
+            // size() == 1 means that the only action is UPDATE_LATENCY, which corresponds
             // to a normal cycle. only increment cycles on those
             if (packet.getActions().size() == 1) current = currentCycle.incrementAndGet();
 

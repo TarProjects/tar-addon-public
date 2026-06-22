@@ -52,7 +52,7 @@ public class AntiPearl extends TarModule {
         .defaultValue(true)
         .build()
     );
-    int realSlot = -1; // i hate silent swaps
+    int realSlot = -1; // I hate silent swaps
 
     public AntiPearl() {
         super(TarAddon.CATEGORY, "anti-pearl", "Cancels/modifies pearl throw depending on scenario");

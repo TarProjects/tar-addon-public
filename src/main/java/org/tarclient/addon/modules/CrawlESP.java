@@ -134,7 +134,7 @@ public class CrawlESP extends TarModule {
                 }
             }
 
-            // TODO: also count cornerclippable positions, but they are difficult
+            // TODO: also count positions where you can clip into a corner, but they are difficult
             if (bedrock == 4 && offset != null) {
                 holes.add(holePool.get().set(pos, offset));
                 holes.add(holePool.get().set(pos.offset(offset), offset.getOpposite()));
@@ -147,9 +147,10 @@ public class CrawlESP extends TarModule {
     }
 
     private boolean isValid(BlockPos pos, boolean primary) {
+        if (mc.world == null) return false;
         if (ignoreOwn.get() && mc.player.getBlockPos() == pos) return false;
         if (ignoreAbove.get() && mc.player.getBlockY() < pos.getY()) return false;
-        // replicate mc.world.getBlockState() but store worldchunk
+        // replicate mc.world.getBlockState() but store the world chunk
         WorldChunk worldChunk = mc.world.getChunk(ChunkSectionPos.getSectionCoord(pos.getX()), ChunkSectionPos.getSectionCoord(pos.getZ()));
         BlockState state = worldChunk.getBlockState(pos);
         Block block = state.getBlock();

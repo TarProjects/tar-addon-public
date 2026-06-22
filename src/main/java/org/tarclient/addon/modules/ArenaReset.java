@@ -50,7 +50,7 @@ public class ArenaReset extends TarModule {
     );
     private final Setting<Integer> setAirWait = sgGeneral.add(new IntSetting.Builder()
         .name("set-air-wait")
-        .description("Ticks waited after recieved message before setting air")
+        .description("Ticks waited after received message before setting air")
         .defaultValue(30)
         .sliderRange(0, 60)
         .build()
@@ -129,7 +129,7 @@ public class ArenaReset extends TarModule {
                                 BlockState blockState = chunk.getBlockState(blockPos);
                                 // air, light, bedrock checks
                                 if (blockState.getBlock() != Blocks.AIR && blockState.getBlock() != Blocks.LIGHT && blockState.getBlock() != Blocks.BEDROCK) {
-                                    // norender flag for this and somehow force rendering at the end? idk
+                                    // no-render flag for this and somehow force rendering at the end? IDK
                                     chunk.setBlockState(blockPos, Blocks.AIR.getDefaultState(), Block.FORCE_STATE);
                                     cleanUpCount++;
                                 }

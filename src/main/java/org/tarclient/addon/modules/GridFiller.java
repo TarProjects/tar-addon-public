@@ -219,7 +219,7 @@ public class GridFiller extends TarModule {
                 Direction placeSide = getClosestPlaceSide(pos);
                 if (placeSide == null) continue;
 
-                // allat for distance :sob:
+                // all of that just for distance :sob:
                 BlockPos neighbour = pos.offset(placeSide);
                 Vec3d vec = neighbour.toCenterPos().add(placeSide.getOffsetX() * 0.5, placeSide.getOffsetY() * 0.5, placeSide.getOffsetZ() * 0.5);
 

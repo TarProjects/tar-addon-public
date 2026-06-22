@@ -106,7 +106,7 @@ public class AutoCEV extends TarModule {
     private int lastBlockY = 0;
 
     public AutoCEV() {
-        super(TarAddon.CATEGORY, "auto-cev", "Cevs opponents");
+        super(TarAddon.CATEGORY, "auto-cev", "Places blocks in a way where placing crystals on top of them and breaking the block would deal damage");
     }
 
     @Override

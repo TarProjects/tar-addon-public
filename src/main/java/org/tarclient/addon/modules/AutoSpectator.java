@@ -44,7 +44,7 @@ public class AutoSpectator extends TarModule {
 
     private final Setting<List<String>> messages = sgGeneral.add(new StringListSetting.Builder()
         .name("messages")
-        .description("Send messages after specating")
+        .description("Send messages after spectating")
         .defaultValue("")
         .build()
     );
@@ -103,7 +103,7 @@ public class AutoSpectator extends TarModule {
         }
         if (stage == Stage.Delay) {
             counter++;
-            // Handling kit here since otherwise we would run into issues with positions when exiting a duel to autospectate
+            // Handling kit here since otherwise we would run into issues with positions when exiting a duel to auto spectate
             if (counter == delay.get() / 2) {
                 // Stupid having the same if statement twice, no can do
                 if (!Objects.equals(kit.get(), "") && mc.player.getY() >= 120 && mc.interactionManager.getCurrentGameMode() == GameMode.SURVIVAL) {

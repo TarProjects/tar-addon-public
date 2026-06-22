@@ -70,6 +70,7 @@ public class TarAddon extends MeteorAddon {
         GuiThemes.add(new TarSettingsTheme());
 
         Modules.get().add(new AntiPearl());
+        Modules.get().add(new AntiSurround());
         Modules.get().add(new ArenaReset());
         Modules.get().add(new AutoCEV());
         Modules.get().add(new AutoDuelAccept());
@@ -82,6 +83,7 @@ public class TarAddon extends MeteorAddon {
         Modules.get().add(new BreakESP());
         Modules.get().add(new ChinaExploit());
         Modules.get().add(new ChorusESP());
+        Modules.get().add(new CopyCat());
         Modules.get().add(new CornerClip());
         Modules.get().add(new CrawlESP());
         Modules.get().add(new DropKit());

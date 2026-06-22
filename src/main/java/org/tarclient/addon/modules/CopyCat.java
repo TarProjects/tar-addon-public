@@ -1,61 +1,79 @@
 package org.tarclient.addon.modules;
 
 import meteordevelopment.meteorclient.events.game.ReceiveMessageEvent;
+import meteordevelopment.meteorclient.events.game.SendMessageEvent;
 import meteordevelopment.meteorclient.events.world.TickEvent;
-import meteordevelopment.meteorclient.settings.*;
+import meteordevelopment.meteorclient.settings.DoubleSetting;
+import meteordevelopment.meteorclient.settings.Setting;
+import meteordevelopment.meteorclient.settings.SettingGroup;
+import meteordevelopment.meteorclient.settings.StringSetting;
 import meteordevelopment.meteorclient.utils.Utils;
 import meteordevelopment.orbit.EventHandler;
+import net.minecraft.client.gui.screen.ChatScreen;
 import org.tarclient.addon.TarAddon;
 import org.tarclient.addon.TarModule;
 
-import java.util.List;
+import java.util.ArrayDeque;
+import java.util.Queue;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class CopyCat extends TarModule {
-    private static final String regex = "^\\[Duels] (\\w+) \\(\\d+\\) \\(\\+\\d+\\) has defeated (\\w+) \\(\\d+\\) \\(-\\d+\\)";
     private final SettingGroup sgGeneral = this.settings.getDefaultGroup();
-    private final Setting<Integer> delay = sgGeneral.add(new IntSetting.Builder()
-        .name("delay")
-        .description("When to start spectating")
-        .defaultValue(90)
-        .sliderRange(0, 120)
+
+
+    private static final String regex = "^<(\\w+)> (.+)";
+    private final Setting<String> target = sgGeneral.add(new StringSetting.Builder()
+        .name("target")
+        .description("Username of person to target")
+        .defaultValue("FreedomForSkids")
         .build()
     );
-    private final Setting<Boolean> disableAutoKit = sgGeneral.add(new BoolSetting.Builder()
-        .name("disable-auto-kit")
-        .description("This module will disable Auto Kit module.")
-        .defaultValue(true)
+    private final Setting<Double> wpm = sgGeneral.add(new DoubleSetting.Builder()
+        .name("wpm")
+        .description("How fast to type")
+        .defaultValue(80)
+        .sliderRange(0, 100)
         .build()
     );
-    private final Setting<String> kit = sgGeneral.add(new StringSetting.Builder()
-        .name("kit")
-        .description("Uses /kit before spectating to keep inventory. Leave as empty if you want to disable this.")
-        .defaultValue("")
-        .build()
-    );
-    private final Setting<List<String>> messages = sgGeneral.add(new StringListSetting.Builder()
-        .name("messages")
-        .description("Send messages after specating")
-        .defaultValue("")
-        .build()
-    );
-    private final Setting<Integer> messagedelay = sgGeneral.add(new IntSetting.Builder()
-        .name("message-delay")
-        .description("When to actually send the messages")
-        .defaultValue(10)
-        .sliderRange(0, 120)
-        .build()
-    );
-    int counter = 0;
+    private final Queue<String> toSend = new ArrayDeque<>();
+    private double lettersTyped = 0;
 
     public CopyCat() {
-        super(TarAddon.CATEGORY, "copy-cat", "Copies ");
+        super(TarAddon.CATEGORY, "copy-cat", "Copies messages sent by someone");
     }
 
     @Override
     public void onActivate() {
-        counter = 0;
+        lettersTyped = 0;
+        toSend.clear();
+    }
+
+    @EventHandler
+    private void onTickPre(TickEvent.Pre event) {
+        if (mc.getNetworkHandler() == null) return;
+
+        boolean paused = mc.currentScreen instanceof ChatScreen;
+
+        if (!paused) {
+            String peek = toSend.peek();
+            if (peek == null) return;
+
+            lettersTyped += (wpm.get() * 5) / 1200;
+            int messageLength = peek.length();
+
+            if (lettersTyped >= messageLength) {
+                mc.getNetworkHandler().sendChatMessage(toSend.poll());
+                lettersTyped = 0;
+            }
+        }
+    }
+
+    @EventHandler
+    private void onMessageSend(SendMessageEvent event) {
+        if (!event.isCancelled()) {
+            lettersTyped = 0;
+        }
     }
 
     @EventHandler
@@ -71,15 +89,12 @@ public class CopyCat extends TarModule {
         Pattern pattern = Pattern.compile(regex);
         Matcher matcher = pattern.matcher(message);
 
-
         if (matcher.find()) {
-
-        }
-    }
-
-    @EventHandler
-    private void onTick(TickEvent.Pre event) {
-        if (!Utils.canUpdate()) {
+            String sender = matcher.group(1);
+            String messageSent = matcher.group(2);
+            if (sender.equals(target.get())) {
+                toSend.add(messageSent);
+            }
         }
     }
 }

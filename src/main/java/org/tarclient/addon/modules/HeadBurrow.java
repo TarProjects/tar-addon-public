@@ -153,10 +153,12 @@ public class HeadBurrow extends TarModule {
             case BLINK -> {
                 if (BlockUtils.canPlace(head, true)) {
                     TarBlockUtils.InteractRunnable runnable = bhr -> {
+                        double yaw = Rotations.getYaw(bhr.getPos());
+                        double pitch = Rotations.getPitch(bhr.getPos());
+
+                        sendRotatePacket(yaw, pitch, RotationPacket.Full);
+
                         InvUtils.swap(obby.slot(), true);
-                        float yaw = (float) Rotations.getYaw(bhr.getPos());
-                        float pitch = (float) Rotations.getPitch(bhr.getPos());
-                        sendPacket(new PlayerMoveC2SPacket.Full(mc.player.getEntityPos(), yaw, pitch, mc.player.isOnGround(), mc.player.horizontalCollision));
                         sendPacket(new PlayerInteractBlockC2SPacket(Hand.MAIN_HAND, bhr, 0));
                         InvUtils.swapBack();
                     };

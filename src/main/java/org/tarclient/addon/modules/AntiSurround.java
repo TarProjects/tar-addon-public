@@ -1,5 +1,6 @@
 package org.tarclient.addon.modules;
 
+import meteordevelopment.meteorclient.events.packets.PacketEvent;
 import meteordevelopment.meteorclient.events.world.TickEvent;
 import meteordevelopment.meteorclient.settings.*;
 import meteordevelopment.meteorclient.systems.friends.Friends;
@@ -19,6 +20,7 @@ import net.minecraft.entity.decoration.EndCrystalEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.BlockItem;
 import net.minecraft.item.Items;
+import net.minecraft.network.packet.c2s.play.PlayerActionC2SPacket;
 import net.minecraft.network.packet.c2s.play.PlayerMoveC2SPacket;
 import net.minecraft.screen.slot.SlotActionType;
 import net.minecraft.util.ActionResult;
@@ -33,8 +35,7 @@ import org.tarclient.addon.utils.TarBlockUtils;
 
 import java.util.List;
 
-import static org.tarclient.addon.utils.MiningUtils.attackWithCompatibility;
-import static org.tarclient.addon.utils.MiningUtils.getBreakingBlockPos;
+import static org.tarclient.addon.utils.MiningUtils.*;
 import static org.tarclient.addon.utils.MioUtils.toggleAutoMine;
 import static org.tarclient.addon.utils.MioUtils.toggleModule;
 
@@ -77,6 +78,13 @@ public class AntiSurround extends TarModule {
         .description("Minimum health of this module")
         .defaultValue(10)
         .sliderRange(5, 30)
+        .build()
+    );
+
+    private final Setting<Boolean> setDead = sgGeneral.add(new BoolSetting.Builder()
+        .name("set-dead")
+        .description("Sets the obsidian to air after break packet, inconsistent!")
+        .defaultValue(true)
         .build()
     );
 
@@ -133,6 +141,24 @@ public class AntiSurround extends TarModule {
         globalCooldown = cooldown ? this.cooldown.get() : 0;
         cantPlaceTicks = 0;
     }
+
+    @EventHandler
+    private void onPacketSend(PacketEvent.Send event) {
+        if (setDead.get()) {
+            if (event.packet instanceof PlayerActionC2SPacket packet) {
+                if (packet.getAction() != PlayerActionC2SPacket.Action.STOP_DESTROY_BLOCK) return;
+                if (!packet.getPos().equals(getBreakingBlockPos())) return;
+                if (getBreakingProgress() < 0.999) return;
+
+                mc.execute(() -> {
+                    if (mc.world == null) return;
+                    info("setdead at " + packet.getPos());
+                    mc.world.setBlockState(packet.getPos(), Blocks.AIR.getDefaultState());
+                });
+            }
+        }
+    }
+
 
     @EventHandler
     private void onClickBlock(ClickBlockEvent event) {

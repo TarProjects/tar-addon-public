@@ -8,10 +8,17 @@ import java.util.List;
 
 public class MioCompatibility extends TarModule {
     private final SettingGroup sgGeneral = this.settings.getDefaultGroup();
-
+    /* --- General --- */
     public final Setting<Boolean> enabled = sgGeneral.add(new BoolSetting.Builder()
         .name("enabled")
         .description("Global toggle")
+        .defaultValue(true)
+        .build()
+    );
+    /* --- Friends --- */
+    public final Setting<Boolean> warnFriendSync = sgGeneral.add(new BoolSetting.Builder()
+        .name("warn-friend-sync")
+        .description("Warn when the player should sync their friends")
         .defaultValue(true)
         .build()
     );
@@ -92,6 +99,16 @@ public class MioCompatibility extends TarModule {
         .defaultValue("Aura", "CrystalAura", "HoleFill")
         .build()
     );
+    public final Setting<String> warnFriendSyncPattern = sgGeneral.add(new StringSetting.Builder()
+        .name("warn-friend-sync-pattern")
+        .description("Regex pattern on when to warn on friend sync. DO NOT CHANGE; FRAGILE")
+        .defaultValue("friend (add|remove) (\\w+)")
+        .visible(ignoreNotif::get)
+        .wide()
+        .build()
+    );
+    private final SettingGroup sgFriends = this.settings.createGroup("Friends");
+
 
     public MioCompatibility() {
         super(TarAddon.CATEGORY, "mio-compatibility", "Required for some features");

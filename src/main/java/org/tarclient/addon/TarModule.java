@@ -7,6 +7,7 @@ import meteordevelopment.meteorclient.systems.modules.Category;
 import meteordevelopment.meteorclient.systems.modules.Module;
 import meteordevelopment.meteorclient.utils.Utils;
 import net.minecraft.network.packet.Packet;
+import net.minecraft.network.packet.c2s.play.PlayerMoveC2SPacket;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
 
@@ -58,9 +59,28 @@ public class TarModule extends Module {
         }
     }
 
+    public void sendRotatePacket(double yaw, double pitch, RotationPacket packetType) {
+        sendRotatePacket((float) yaw, (float) pitch, packetType);
+    }
+
+    public void sendRotatePacket(float yaw, float pitch, RotationPacket packetType) {
+        if (mc.player == null) return;
+        switch (packetType) {
+            case Full ->
+                sendPacket(new PlayerMoveC2SPacket.Full(mc.player.getEntityPos(), yaw, pitch, mc.player.isOnGround(), mc.player.horizontalCollision));
+            case Minimal ->
+                sendPacket(new PlayerMoveC2SPacket.LookAndOnGround(yaw, pitch, mc.player.isOnGround(), mc.player.horizontalCollision));
+        }
+    }
+
     public void sendPacket(Packet<?> packet) {
         if (packet != null && mc.getNetworkHandler() != null) {
             mc.getNetworkHandler().sendPacket(packet);
         }
+    }
+
+    public enum RotationPacket {
+        Full,
+        Minimal
     }
 }

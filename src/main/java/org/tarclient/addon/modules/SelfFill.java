@@ -70,13 +70,19 @@ public class SelfFill extends TarModule {
         .build()
     );
 
-    private final Setting<Boolean> rotate = sgAttack.add(new BoolSetting.Builder()
+    private final Setting<Rotation> rotate = sgAttack.add(new EnumSetting.Builder<Rotation>()
         .name("rotate")
         .description("Rotates for attacking")
-        .defaultValue(true)
+        .defaultValue(Rotation.Normal)
         .build()
     );
 
+    private final Setting<Boolean> setDead = sgAttack.add(new BoolSetting.Builder()
+        .name("set-dead")
+        .description("Sets attacked crystals to be dead")
+        .defaultValue(true)
+        .build()
+    );
 
     private final Setting<Integer> attackCooldown = sgAttack.add(new IntSetting.Builder()
         .name("attack-cooldown")
@@ -148,7 +154,7 @@ public class SelfFill extends TarModule {
     );
 
     BlockPos start;
-    int ticks;
+    int globalCooldown;
     int attackTicks;
     int swapCooldown;
 
@@ -163,7 +169,7 @@ public class SelfFill extends TarModule {
             return;
         }
         start = getCeiledBlockPos();
-        ticks = 0;
+        globalCooldown = 0;
         attackTicks = 0;
         swapCooldown = 0;
 
@@ -202,30 +208,31 @@ public class SelfFill extends TarModule {
             if (attackTicks > 0) {
                 attackTicks--;
             } else {
-                boolean attacked = false;
                 for (Entity entity : mc.world.getEntities()) {
                     if (!(entity instanceof EndCrystalEntity)) continue;
                     if (Box.from(new BlockBox(getCeiledBlockPos())).intersects(entity.getBoundingBox())) {
-                        if (rotate.get()) {
-                            Rotations.rotate(Rotations.getYaw(entity), Rotations.getPitch(entity),
+                        double yaw = Rotations.getYaw(entity);
+                        double pitch = Rotations.getPitch(entity);
+
+                        switch (rotate.get()) {
+                            case None -> attack(entity);
+                            case Normal -> Rotations.rotate(yaw, pitch,
                                 () -> attack(entity));
-                        } else {
-                            attack(entity);
+                            case Silent -> {
+                                sendRotatePacket(yaw, pitch, RotationPacket.Full);
+                                attack(entity);
+                            }
                         }
 
-                        attacked = true;
+                        // set cooldown
+                        attackTicks = attackCooldown.get();
                     }
-                }
-
-                if (attacked) {
-                    attackTicks = attackCooldown.get();
-                    return;
                 }
             }
         }
 
-        if (ticks > 0) {
-            ticks--;
+        if (globalCooldown > 0) {
+            globalCooldown--;
             return;
         }
 
@@ -235,7 +242,7 @@ public class SelfFill extends TarModule {
 
         tryBurrow(block.slot());
 
-        ticks = cooldown.get();
+        globalCooldown = cooldown.get();
     }
 
     private void swap(int slot) {
@@ -265,6 +272,10 @@ public class SelfFill extends TarModule {
 
         mc.interactionManager.attackEntity(mc.player, target);
         mc.player.swingHand(Hand.MAIN_HAND);
+        // setdead
+        if (setDead.get()) {
+            target.setRemoved(Entity.RemovalReason.KILLED);
+        }
     }
 
     public void tryBurrow(int slot) {
@@ -308,6 +319,7 @@ public class SelfFill extends TarModule {
     }
 
     public void burrow(int slot, double velocity, int iterations) {
+        if (mc.player == null) return;
         double y = 0.0;
 
         for (int i = 0; i < iterations; i++) {
@@ -347,5 +359,11 @@ public class SelfFill extends TarModule {
     private boolean canPlace(BlockState state, BlockPos pos, ShapeContext context) {
         VoxelShape voxelShape = state.getCollisionShape(mc.world, pos, context);
         return voxelShape.isEmpty() || mc.world.doesNotIntersectEntities(mc.player, voxelShape.offset(pos.getX(), pos.getY(), pos.getZ()));
+    }
+
+    private enum Rotation {
+        Normal,
+        Silent,
+        None
     }
 }

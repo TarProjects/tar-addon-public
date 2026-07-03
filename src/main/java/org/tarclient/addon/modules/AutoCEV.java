@@ -16,7 +16,6 @@ import net.minecraft.entity.Entity;
 import net.minecraft.entity.decoration.EndCrystalEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.Items;
-import net.minecraft.network.packet.c2s.play.PlayerMoveC2SPacket;
 import net.minecraft.screen.slot.SlotActionType;
 import net.minecraft.util.Hand;
 import net.minecraft.util.math.BlockBox;
@@ -215,10 +214,12 @@ public class AutoCEV extends TarModule {
             return;
         }
 
+        // TODO: rotation enums/generic module classes
         TarBlockUtils.InteractRunnable callback = (bhr -> {
-            float yaw = (float) Rotations.getYaw(bhr.getPos());
-            float pitch = (float) Rotations.getPitch(bhr.getPos());
-            sendPacket(new PlayerMoveC2SPacket.Full(mc.player.getEntityPos(), yaw, pitch, mc.player.isOnGround(), mc.player.horizontalCollision));
+            double yaw = Rotations.getYaw(bhr.getPos());
+            double pitch = Rotations.getPitch(bhr.getPos());
+
+            sendRotatePacket(yaw, pitch, RotationPacket.Full);
 
             swap(obby.slot());
             BlockUtils.interact(bhr, Hand.MAIN_HAND, true);

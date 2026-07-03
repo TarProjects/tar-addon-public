@@ -28,7 +28,7 @@ public class MiningUtils {
     }
 
     @EventHandler(priority = EventPriority.HIGH)
-    private static void onPacketSend(PacketEvent.Send event) {
+    private static void onPacketSend(PacketEvent.Sent event) {
         if (event.packet instanceof PlayerActionC2SPacket packet) {
             if (packet.getAction() == PlayerActionC2SPacket.Action.START_DESTROY_BLOCK) {
                 breaking = new Breaking(packet.getPos(), packet.getDirection());

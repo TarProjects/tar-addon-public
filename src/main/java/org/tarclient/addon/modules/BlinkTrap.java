@@ -24,7 +24,6 @@ import net.minecraft.entity.data.DataTracker;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.Items;
 import net.minecraft.network.packet.Packet;
-import net.minecraft.network.packet.c2s.play.PlayerMoveC2SPacket;
 import net.minecraft.network.packet.s2c.play.EntityPositionSyncS2CPacket;
 import net.minecraft.network.packet.s2c.play.EntityTrackerUpdateS2CPacket;
 import net.minecraft.network.packet.s2c.play.PlayerListS2CPacket;
@@ -356,9 +355,10 @@ public class BlinkTrap extends TarModule {
             if (placed >= blocksPerTick.get() || obby.count() - placed <= 0) break;
 
             boolean didPlace = TarBlockUtils.place(blockPos, false, true, Blocks.OBSIDIAN, (blockHitResult) -> {
-                float yaw = (float) Rotations.getYaw(blockHitResult.getPos());
-                float pitch = (float) Rotations.getPitch(blockHitResult.getPos());
-                sendPacket(new PlayerMoveC2SPacket.Full(mc.player.getEntityPos(), yaw, pitch, mc.player.isOnGround(), mc.player.horizontalCollision));
+                double yaw = Rotations.getYaw(blockHitResult.getPos());
+                double pitch = Rotations.getPitch(blockHitResult.getPos());
+
+                sendRotatePacket(yaw, pitch, RotationPacket.Full);
 
                 // only swaps once so we don't have to spam swaps
                 InvUtils.swap(obby.slot(), true);

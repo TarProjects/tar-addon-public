@@ -1,6 +1,5 @@
 package org.tarclient.addon.modules;
 
-import meteordevelopment.meteorclient.utils.Utils;
 import net.minecraft.network.packet.c2s.play.PlayerMoveC2SPacket;
 import net.minecraft.util.math.Vec3d;
 import org.tarclient.addon.TarAddon;
@@ -13,7 +12,7 @@ public class CornerClip extends TarModule {
 
     @Override
     public void onActivate() {
-        if (!Utils.canUpdate()) {
+        if (mc.player == null) {
             toggle();
             return;
         }

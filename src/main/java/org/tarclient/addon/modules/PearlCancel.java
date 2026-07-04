@@ -45,7 +45,7 @@ public class PearlCancel extends TarModule {
             pearlId = -999;
         }
 
-        // just some basic checks, dont ask why .age
+        // just some basic checks, don't ask why .age
         boolean exists = entity != null && entity.isAlive() && entity.age > 0;
 
 

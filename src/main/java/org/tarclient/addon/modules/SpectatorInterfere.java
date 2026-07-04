@@ -41,7 +41,7 @@ public class SpectatorInterfere extends TarModule {
         .build()
     );
 
-    private final Setting<Integer> survivalOffgroundTicks = sgGeneral.add(new IntSetting.Builder()
+    private final Setting<Integer> survivalOffGroundTicks = sgGeneral.add(new IntSetting.Builder()
         .name("survival-offground-ticks")
         .description("Amount of ticks before going back to spec")
         .defaultValue(40)
@@ -90,7 +90,7 @@ public class SpectatorInterfere extends TarModule {
     );
 
     private Stage stage;
-    private int vclipCooldown;
+    private int vClipCooldown;
     private double currentSpeed;
     private int stageTicks;
 
@@ -107,7 +107,7 @@ public class SpectatorInterfere extends TarModule {
             return;
         }
         stage = Stage.Spectator;
-        vclipCooldown = 0;
+        vClipCooldown = 0;
         mc.player.setPosition(mc.player.getX(), mc.player.getBlockY(), mc.player.getZ());
         currentSpeed = speed.get();
         stageTicks = 0;
@@ -168,10 +168,10 @@ public class SpectatorInterfere extends TarModule {
                 if (mc.options.jumpKey.isPressed()) vertical++;
                 if (mc.options.sneakKey.isPressed()) vertical--;
 
-                if (vclipCooldown > 0) {
-                    vclipCooldown--;
+                if (vClipCooldown > 0) {
+                    vClipCooldown--;
                 } else if (vertical != 0) {
-                    vclipCooldown = verticalCooldown.get();
+                    vClipCooldown = verticalCooldown.get();
                     int newY = mc.player.getBlockY() + vertical;
                     if (newY >= minY.get()) {
                         mc.player.setPosition(mc.player.getX(), newY, mc.player.getZ());
@@ -200,8 +200,8 @@ public class SpectatorInterfere extends TarModule {
                     stageTicks = 0;
                 }
 
-                if (stageTicks >= survivalOffgroundTicks.get()) {
-                    info("Too long offground, switching to spectator!");
+                if (stageTicks >= survivalOffGroundTicks.get()) {
+                    info("Too long off-ground, switching to spectator!");
                     switchToSpectator();
                     stage = Stage.WaitForSpectator;
                     return;

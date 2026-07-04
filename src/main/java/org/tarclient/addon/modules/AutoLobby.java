@@ -25,7 +25,6 @@ public class AutoLobby extends TarModule {
         .build()
     );
 
-
     private final Setting<Integer> delayMin = sgGeneral.add(new IntSetting.Builder()
         .name("delay-min")
         .sliderRange(0, 60)
@@ -45,6 +44,7 @@ public class AutoLobby extends TarModule {
         .defaultValue(600)
         .build()
     );
+
     Random random = new Random();
     IBaritone baritone;
     int index = 0;

@@ -85,7 +85,7 @@ public class HeadBurrow extends TarModule {
 
     @Override
     public void onActivate() {
-        if (!Utils.canUpdate()) {
+        if (mc.player == null) {
             toggle();
             return;
         }
@@ -111,9 +111,9 @@ public class HeadBurrow extends TarModule {
 
     @Override
     public void onDeactivate() {
-        if (!Utils.canUpdate()) return;
         packets.clear();
 
+        if (mc.player == null) return;
         if (!dumped) {
             mc.player.setPosition(startPos.getX(), startPos.getY(), startPos.getZ());
             mc.player.setVelocity(Vec3d.ZERO);
@@ -122,7 +122,7 @@ public class HeadBurrow extends TarModule {
 
     @EventHandler
     private void onTickPre(TickEvent.Pre event) {
-        if (!Utils.canUpdate()) {
+        if (mc.player == null) {
             toggle();
             return;
         }
@@ -228,6 +228,7 @@ public class HeadBurrow extends TarModule {
 
 
     public void addCustom(int amount) {
+        if (mc.player == null) return;
         synchronized (packets) {
             for (int i = 0; i < amount; i++) {
                 packets.add(new PlayerMoveC2SPacket.LookAndOnGround(

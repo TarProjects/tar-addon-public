@@ -79,6 +79,8 @@ public class PearlBoost extends TarModule {
 
     @EventHandler
     private void onTickPre(TickEvent.Pre event) {
+        if (mc.world == null || mc.interactionManager == null || mc.player == null) return;
+
         if (pearlID == -999) {
             stage = Stage.None;
             obbyPosition = null;
@@ -181,6 +183,7 @@ public class PearlBoost extends TarModule {
     }
 
     private boolean canPlaceCrystal(BlockPos pos) {
+        if (mc.world == null) return false;
         BlockState state = mc.world.getBlockState(pos);
 
         if (!(state.isOf(Blocks.OBSIDIAN) || state.isOf(Blocks.BEDROCK))) {

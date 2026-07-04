@@ -5,7 +5,6 @@ import meteordevelopment.meteorclient.settings.BoolSetting;
 import meteordevelopment.meteorclient.settings.DoubleSetting;
 import meteordevelopment.meteorclient.settings.Setting;
 import meteordevelopment.meteorclient.settings.SettingGroup;
-import meteordevelopment.meteorclient.utils.Utils;
 import meteordevelopment.orbit.EventHandler;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.projectile.ProjectileUtil;
@@ -58,9 +57,14 @@ public class AntiPearl extends TarModule {
         super(TarAddon.CATEGORY, "anti-pearl", "Cancels/modifies pearl throw depending on scenario");
     }
 
+    @Override
+    public void onActivate() {
+        if (mc.player != null) realSlot = mc.player.getInventory().getSelectedSlot();
+    }
+
     @EventHandler
     private void onPacketSend(final PacketEvent.Send event) {
-        if (!Utils.canUpdate()) return;
+        if (mc.player == null) return;
 
         if (event.packet instanceof UpdateSelectedSlotC2SPacket packet) {
             realSlot = packet.getSelectedSlot();
@@ -96,6 +100,7 @@ public class AntiPearl extends TarModule {
             if (mc.player.getInventory().getStack(realSlot).getItem() != Items.ENDER_PEARL) return;
 
             if (blocks.get()) {
+                info("Cancelled block interaction!");
                 event.cancel(); // pray that silent swap doesnt cancel block place ig
             }
         }
@@ -113,6 +118,8 @@ public class AntiPearl extends TarModule {
 
     // return true if pearl hits entity
     private boolean hitsEntity() {
+        if (mc.player == null) return false;
+
         float tickProgress = mc.getRenderTickCounter().getTickProgress(true);
         double maxDistance = range.get();
 

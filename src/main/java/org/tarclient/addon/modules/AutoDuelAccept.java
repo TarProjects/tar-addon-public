@@ -7,7 +7,6 @@ import meteordevelopment.meteorclient.settings.BoolSetting;
 import meteordevelopment.meteorclient.settings.Setting;
 import meteordevelopment.meteorclient.settings.SettingGroup;
 import meteordevelopment.meteorclient.settings.StringListSetting;
-import meteordevelopment.meteorclient.utils.Utils;
 import meteordevelopment.meteorclient.utils.player.FindItemResult;
 import meteordevelopment.meteorclient.utils.player.InvUtils;
 import meteordevelopment.orbit.EventHandler;
@@ -45,7 +44,7 @@ public class AutoDuelAccept extends TarModule {
     private static final Pattern duelRegex = Pattern.compile("^Duel request received from ([a-zA-Z0-9_]+).");
     private static final Pattern whisperRegex = Pattern.compile("^(\\w+) says: ([\\w!]+)");
     private String threw = null;
-    private int send;
+    private int sendInNTicks;
     private UUID toSend;
 
     public AutoDuelAccept() {
@@ -55,19 +54,21 @@ public class AutoDuelAccept extends TarModule {
     @Override
     public void onActivate() {
         threw = null;
-        send = -1;
+        sendInNTicks = -1;
         toSend = null;
     }
 
     @EventHandler
     private void onTickPre(TickEvent.Pre event) {
-        if (send != -1) {
-            send--;
-            if (send == 0) {
+        if (mc.getNetworkHandler() == null) return;
+
+        if (sendInNTicks != -1) {
+            sendInNTicks--;
+            if (sendInNTicks == 0) {
                 mc.getNetworkHandler().sendChatCommand("msg " + threw + " " + toSend);
 
                 threw = null;
-                send = -1;
+                sendInNTicks = -1;
                 toSend = null;
             }
         }
@@ -75,9 +76,8 @@ public class AutoDuelAccept extends TarModule {
 
     @EventHandler
     private void onMessage(ReceiveMessageEvent event) {
-        if (!Utils.canUpdate()) {
-            return;
-        }
+        if (mc.getNetworkHandler() == null || mc.player == null) return;
+
         String message = event.getMessage().getString();
 
         // Matches for duel start
@@ -118,12 +118,14 @@ public class AutoDuelAccept extends TarModule {
 
     @EventHandler
     private void onPacketReceive(PacketEvent.Receive event) {
+        if (mc.player == null) return;
+
         if (event.packet instanceof EntitySpawnS2CPacket packet) {
             if (packet.getEntityType() == EntityType.ENDER_PEARL && packet.getEntityData() == mc.player.getId()) {
-                if (threw == null || !throwPearl.get() || send != -1 || toSend != null) return;
+                if (threw == null || !throwPearl.get() || sendInNTicks != -1 || toSend != null) return;
                 // send in 30 ticks
                 toSend = packet.getUuid();
-                send = 30;
+                sendInNTicks = 30;
             }
         }
     }

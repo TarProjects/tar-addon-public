@@ -175,6 +175,7 @@ public class RegearBot extends TarModule {
     }
 
     private void throwPot(int slot) {
+        if (mc.player == null) return;
         InvUtils.swap(slot, true);
         Hand hand = (slot == SlotUtils.OFFHAND) ? Hand.OFF_HAND : Hand.MAIN_HAND;
         sendPacket(new PlayerInteractItemC2SPacket(hand, 0, mc.player.getYaw(), -90));
@@ -182,6 +183,7 @@ public class RegearBot extends TarModule {
     }
 
     private void tickDropArmor() {
+        if (mc.getNetworkHandler() == null) return;
         if (!dropArmor.get() || counter >= 4 * modulo.get()) { // either done dropping or not gonna drop armor
             counter = 0;
             stage = Stage.ChinaExploit;
@@ -239,6 +241,8 @@ public class RegearBot extends TarModule {
     }
 
     private void regear(String username) {
+        if (mc.player == null || mc.getNetworkHandler() == null) return;
+
         if (mc.player.getGameMode() != GameMode.SPECTATOR) {
             error("Not in spectator!");
             return;

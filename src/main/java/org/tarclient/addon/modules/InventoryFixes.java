@@ -149,7 +149,7 @@ public class InventoryFixes extends TarModule {
                     Slot newOffhand = handler.getSlot(OFFHAND_INDEX);
                     if (newOffhand == null) break;
 
-                    // offhand stack wasnt empty, but now it is
+                    // offhand stack wasn't empty, but now it is
                     if (!offhandStack.isEmpty() && newOffhand.getStack().isEmpty()) {
                         offhand(offhandStack, handler);
                     }
@@ -161,9 +161,9 @@ public class InventoryFixes extends TarModule {
                             painted.clear();
 
                             // hard fix to a small issue
-                            // if you dont move mouse, but you
+                            // if you don't move mouse, but you
                             // press a bind, the HOLD stage
-                            // wont get called and nothing
+                            // won't get called and nothing
                             // will happen. This is why
                             // we assume that the hovered
                             // slot should be painted with the
@@ -253,7 +253,7 @@ public class InventoryFixes extends TarModule {
 
         int emptied = 0;
 
-        for (int i = 1; i <= 44; i++) { // skip offhand beacuse it's not a good heuristic
+        for (int i = 1; i <= 44; i++) { // skip offhand because it's not a good heuristic
             Slot s = handler.getSlot(i);
 
             if (s == null || !s.hasStack()) continue;

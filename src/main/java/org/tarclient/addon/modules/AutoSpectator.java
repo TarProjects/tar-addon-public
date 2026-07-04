@@ -19,7 +19,6 @@ import java.util.regex.Pattern;
 public class AutoSpectator extends TarModule {
     private final SettingGroup sgGeneral = this.settings.getDefaultGroup();
 
-
     private final Setting<Integer> delay = sgGeneral.add(new IntSetting.Builder()
         .name("delay")
         .description("When to start spectating")
@@ -57,6 +56,8 @@ public class AutoSpectator extends TarModule {
         .build()
     );
 
+    private static final String DUEL_DEFEAT_REGEX = "^\\[Duels] (\\w+) \\(\\d+\\) \\(\\+\\d+\\) has defeated (\\w+) \\(\\d+\\) \\(-\\d+\\)";
+
     Stage stage;
     int counter;
     String winner;
@@ -72,9 +73,6 @@ public class AutoSpectator extends TarModule {
         winner = "";
     }
 
-    private static final String regex = "^\\[Duels] (\\w+) \\(\\d+\\) \\(\\+\\d+\\) has defeated (\\w+) \\(\\d+\\) \\(-\\d+\\)";
-
-
     @EventHandler
     private void onMessageReceive(ReceiveMessageEvent event) {
         if (!Utils.canUpdate() || stage != Stage.WaitForMessage) {
@@ -84,9 +82,8 @@ public class AutoSpectator extends TarModule {
 
 
         // Matches for duel end messages
-        Pattern pattern = Pattern.compile(regex);
+        Pattern pattern = Pattern.compile(DUEL_DEFEAT_REGEX);
         Matcher matcher = pattern.matcher(message);
-
 
         if (matcher.find()) {
             this.winner = matcher.group(1);
@@ -97,7 +94,7 @@ public class AutoSpectator extends TarModule {
 
     @EventHandler
     private void onTick(TickEvent.Pre event) {
-        if (!Utils.canUpdate()) {
+        if (mc.world == null || mc.player == null || mc.getNetworkHandler() == null) {
             if (stage != Stage.WaitForMessage) counter++; // tick inconsistencies while loading
             return;
         }

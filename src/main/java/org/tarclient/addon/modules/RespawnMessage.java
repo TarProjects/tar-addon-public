@@ -34,7 +34,7 @@ public class RespawnMessage extends TarModule {
     boolean active = false;
 
     public RespawnMessage() {
-        super(TarAddon.CATEGORY, "respawn-message", "Sends a message on respawn");
+        super(TarAddon.CATEGORY, "respawn-message", "Sends a message on respawn. Useful for e.g. warping when respawning");
     }
 
     @Override

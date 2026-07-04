@@ -116,6 +116,7 @@ public class BreakESP extends TarModule {
         event.renderer.box(getBox(pos, progress, animation.get()), side, line, shapeMode.get(), 0);
     }
 
+    @SuppressWarnings("DuplicateBranchesInSwitch")
     private Box getBox(BlockPos pos, double progress, Animation animation) {
         double minX, minY, minZ, maxX, maxY, maxZ;
 

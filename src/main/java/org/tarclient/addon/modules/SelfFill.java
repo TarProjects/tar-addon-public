@@ -45,10 +45,10 @@ public class SelfFill extends TarModule {
     private final SettingGroup sgBlocks = this.settings.createGroup("Blocks");
 
 
-    private final Setting<Boolean> autodisable = sgGeneral.add(new BoolSetting.Builder()
-        .name("autodisable")
+    private final Setting<Boolean> autoDisable = sgGeneral.add(new BoolSetting.Builder()
+        .name("auto-disable")
         .description("This module disables itself if it is unable to burrow.")
-        .defaultValue(true)
+        .defaultValue(false)
         .build()
     );
 
@@ -57,7 +57,7 @@ public class SelfFill extends TarModule {
         .description("To not burrow multiple times")
         .defaultValue(3)
         .sliderRange(0, 20)
-        .visible(() -> !autodisable.get())
+        .visible(() -> !autoDisable.get())
         .build()
     );
 
@@ -93,14 +93,14 @@ public class SelfFill extends TarModule {
     );
 
     /* --- Bypass --- */
-    private final Setting<Boolean> onground = sgBypass.add(new BoolSetting.Builder()
+    private final Setting<Boolean> onGround = sgBypass.add(new BoolSetting.Builder()
         .name("on-ground")
         .description("Spoofs on-ground value. Set this to whichever you want the onground value to be.")
         .defaultValue(true)
         .build()
     );
 
-    private final Setting<Boolean> ongroundtwo = sgBypass.add(new BoolSetting.Builder()
+    private final Setting<Boolean> onGroundTwo = sgBypass.add(new BoolSetting.Builder()
         .name("on-ground-two")
         .description("Spoofs on-ground value. Set this to whichever you want the onground value to be.")
         .defaultValue(true)
@@ -173,7 +173,7 @@ public class SelfFill extends TarModule {
         attackTicks = 0;
         swapCooldown = 0;
 
-        if (autodisable.get()) {
+        if (autoDisable.get()) {
             FindItemResult block = findPlaceable();
             if (!block.found()) {
                 error("No valid blocks found in hotbar, disabling!");
@@ -190,7 +190,7 @@ public class SelfFill extends TarModule {
 
     @EventHandler
     private void onTick(TickEvent.Pre event) {
-        if (!Utils.canUpdate() || autodisable.get() || !getCeiledBlockPos().equals(start)) {
+        if (mc.world == null || mc.player == null || autoDisable.get() || !getCeiledBlockPos().equals(start)) {
             this.toggle();
             return;
         }
@@ -272,13 +272,14 @@ public class SelfFill extends TarModule {
 
         mc.interactionManager.attackEntity(mc.player, target);
         mc.player.swingHand(Hand.MAIN_HAND);
-        // setdead
+        // SetDead
         if (setDead.get()) {
             target.setRemoved(Entity.RemovalReason.KILLED);
         }
     }
 
     public void tryBurrow(int slot) {
+        if (mc.player == null) return;
         ItemStack stack = mc.player.getInventory().getStack(slot);
         if (stack.getItem() instanceof BlockItem blockItem) {
             int iterations = this.iterations.get();
@@ -324,7 +325,7 @@ public class SelfFill extends TarModule {
 
         for (int i = 0; i < iterations; i++) {
             y = y + velocity;
-            sendPacket(new PlayerMoveC2SPacket.Full(mc.player.getX(), mc.player.getY() + y, mc.player.getZ(), mc.player.getYaw(), 90, onground.get(), mc.player.horizontalCollision));
+            sendPacket(new PlayerMoveC2SPacket.Full(mc.player.getX(), mc.player.getY() + y, mc.player.getZ(), mc.player.getYaw(), 90, onGround.get(), mc.player.horizontalCollision));
             velocity = (velocity - minus) * gravity;
         }
 
@@ -332,7 +333,7 @@ public class SelfFill extends TarModule {
         sendPacket(new PlayerInteractBlockC2SPacket(Hand.MAIN_HAND, new BlockHitResult(getCeiledBlockPos().down().toCenterPos(), Direction.UP, getCeiledBlockPos().down(), false), 0));
         swapBack(slot);
 
-        sendPacket(new PlayerMoveC2SPacket.PositionAndOnGround(mc.player.getX(), mc.player.getY() + y + offset.get(), mc.player.getZ(), ongroundtwo.get(), mc.player.horizontalCollision));
+        sendPacket(new PlayerMoveC2SPacket.PositionAndOnGround(mc.player.getX(), mc.player.getY() + y + offset.get(), mc.player.getZ(), onGroundTwo.get(), mc.player.horizontalCollision));
     }
 
     @SuppressWarnings("UnnecessaryLocalVariable")
@@ -349,6 +350,8 @@ public class SelfFill extends TarModule {
     }
 
     private boolean canBurrow() {
+        if (mc.world == null || mc.player == null) return false;
+
         BlockPos pos = getCeiledBlockPos();
         if (!mc.world.getBlockState(pos).isReplaceable()) return false;
         if (!canPlace(Blocks.OBSIDIAN.getDefaultState(), pos, ShapeContext.absent())) return false;
@@ -357,6 +360,7 @@ public class SelfFill extends TarModule {
     }
 
     private boolean canPlace(BlockState state, BlockPos pos, ShapeContext context) {
+        if (mc.world == null) return false;
         VoxelShape voxelShape = state.getCollisionShape(mc.world, pos, context);
         return voxelShape.isEmpty() || mc.world.doesNotIntersectEntities(mc.player, voxelShape.offset(pos.getX(), pos.getY(), pos.getZ()));
     }

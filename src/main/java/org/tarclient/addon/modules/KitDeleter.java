@@ -220,6 +220,7 @@ public class KitDeleter extends TarModule {
         };
     }
 
+    @SuppressWarnings("SpellCheckingInspection")
     private void deleteKit(String kit) {
         if (mc.getNetworkHandler() != null) {
             mc.getNetworkHandler().sendChatCommand("deleteukit " + kit);

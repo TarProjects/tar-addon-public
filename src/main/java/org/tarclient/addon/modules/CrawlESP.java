@@ -97,6 +97,8 @@ public class CrawlESP extends TarModule {
 
     @EventHandler
     private void onTick(TickEvent.Pre event) {
+        if (mc.world == null) return;
+
         holePool.freeAll(holes);
         holes.clear();
 
@@ -143,11 +145,12 @@ public class CrawlESP extends TarModule {
     }
 
     private Block getBlock(BlockPos pos) {
+        if (mc.world == null) return null;
         return mc.world.getBlockState(pos).getBlock();
     }
 
     private boolean isValid(BlockPos pos, boolean primary) {
-        if (mc.world == null) return false;
+        if (mc.world == null || mc.player == null) return false;
         if (ignoreOwn.get() && mc.player.getBlockPos() == pos) return false;
         if (ignoreAbove.get() && mc.player.getBlockY() < pos.getY()) return false;
         // replicate mc.world.getBlockState() but store the world chunk

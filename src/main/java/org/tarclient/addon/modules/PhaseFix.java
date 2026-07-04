@@ -73,14 +73,14 @@ public class PhaseFix extends TarModule {
 
     private final Setting<String> vClipDisable = sgGeneral.add(new StringSetting.Builder()
         .name("v-clip-disable")
-        .description("Which module to disable on vclip")
+        .description("Which module to disable on v-clip")
         .defaultValue("FeetPlace")
         .build()
     );
 
     private final Setting<Integer> vClipJumpDelay = sgGeneral.add(new IntSetting.Builder()
         .name("v-clip-jump-delay")
-        .description("The delay on where to cancel jumps (after vclipping)")
+        .description("The delay on where to cancel jumps (after v-clipping)")
         .defaultValue(10)
         .sliderRange(0, 20)
         .visible(vClipJump::get)
@@ -101,7 +101,7 @@ public class PhaseFix extends TarModule {
 
     @EventHandler
     private void onMove(PlayerMoveEvent event) {
-        if (!Utils.canUpdate() || isNotSurvival()) return;
+        if (mc.player == null || isNotSurvival()) return;
         if (!isBurrowed()) return;
 
         Vec3d velocity = event.movement;
@@ -142,9 +142,9 @@ public class PhaseFix extends TarModule {
 
     @EventHandler
     private void onJump(PlayerJumpEvent event) {
-        if (!Utils.canUpdate() || isNotSurvival() || !vClipJump.get()) return;
+        if (mc.world == null || mc.player == null || isNotSurvival() || !vClipJump.get()) return;
 
-        // Prevent jumping instantly after vclipping
+        // Prevent jumping instantly after v-clipping
         if (delay > 0) {
             event.cancel();
             return;
@@ -160,7 +160,7 @@ public class PhaseFix extends TarModule {
             double y = blockPos.getY() + offset;
 
             mc.player.setPosition(mc.player.getX(), y, mc.player.getZ());
-            // Packet will be sent on tick anyways, stop flaggin with this?
+            // Packet will be sent on tick anyway, stop flagging with this?
             sendPacket(new PlayerMoveC2SPacket.PositionAndOnGround(mc.player.getX(), mc.player.getY(), mc.player.getZ(), false, mc.player.horizontalCollision));
 
             if (!vClipDisable.get().isEmpty()) {
@@ -181,6 +181,7 @@ public class PhaseFix extends TarModule {
     }
 
     private boolean isNotSurvival() {
+        if (mc.interactionManager == null) return false;
         return mc.interactionManager.getCurrentGameMode() != GameMode.SURVIVAL;
     }
 }

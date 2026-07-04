@@ -196,6 +196,7 @@ public class AutoCEV extends TarModule {
             }
         }
 
+        // TODO: SetDead to cev even if crystal in the way
         if (intersects) {
             reset();
             return;

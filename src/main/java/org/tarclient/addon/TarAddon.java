@@ -3,7 +3,6 @@ package org.tarclient.addon;
 import meteordevelopment.meteorclient.addons.GithubRepo;
 import meteordevelopment.meteorclient.addons.MeteorAddon;
 import meteordevelopment.meteorclient.commands.Commands;
-import meteordevelopment.meteorclient.gui.GuiThemes;
 import meteordevelopment.meteorclient.systems.modules.Category;
 import meteordevelopment.meteorclient.systems.modules.Modules;
 import meteordevelopment.meteorclient.utils.PreInit;
@@ -14,7 +13,6 @@ import org.meteordev.starscript.value.Value;
 import org.meteordev.starscript.value.ValueMap;
 import org.tarclient.addon.commands.*;
 import org.tarclient.addon.modules.*;
-import org.tarclient.addon.themes.TarSettingsTheme;
 import org.tarclient.addon.utils.MioUtils;
 
 import static meteordevelopment.meteorclient.MeteorClient.mc;
@@ -28,7 +26,6 @@ public class TarAddon extends MeteorAddon {
     public static void preInit() {
         // Add more stuff?
         MeteorStarscript.ss.set("enemy", new ValueMap()
-            // what the fuck intellij im literally checking that its not null and ur telling it throws nullpointerex?
             .set("_toString", () -> {
                 PlayerEntity closest = closestPlayer();
                 return Value.string(closest != null ? closest.getName().getString() : "None");
@@ -63,12 +60,9 @@ public class TarAddon extends MeteorAddon {
         return player;
     }
 
-    // TODO: remove all Utils.canUpdate since events arent called if player is null anyways.... stupid me
+    // TODO: remove all Utils.canUpdate since events aren't called if player is null anyways.... stupid me
     @Override
     public void onInitialize() {
-        // Overwrites default theme, only for custom settings!
-        GuiThemes.add(new TarSettingsTheme());
-
         Modules.get().add(new AntiPearl());
         Modules.get().add(new AntiSurround());
         Modules.get().add(new ArenaReset());
@@ -86,6 +80,7 @@ public class TarAddon extends MeteorAddon {
         Modules.get().add(new CopyCat());
         Modules.get().add(new CornerClip());
         Modules.get().add(new CrawlESP());
+        Modules.get().add(new CrystalWaster());
         Modules.get().add(new DropKit());
         Modules.get().add(new Flattener());
         Modules.get().add(new GridFiller());
@@ -101,7 +96,6 @@ public class TarAddon extends MeteorAddon {
         Modules.get().add(new NoLerp());
         Modules.get().add(new PearlBoost());
         Modules.get().add(new PearlCancel());
-        Modules.get().add(new PearlPhase());
         Modules.get().add(new PhaseFix());
         Modules.get().add(new PlaceObsidian());
         Modules.get().add(new RegearBot());

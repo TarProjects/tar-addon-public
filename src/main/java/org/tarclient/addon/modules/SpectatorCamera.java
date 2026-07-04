@@ -27,7 +27,7 @@ public class SpectatorCamera extends TarModule {
     private double prevOffset = 0;
 
     public SpectatorCamera() {
-        super(TarAddon.CATEGORY, "spectator-camera", "Modifies Y level");
+        super(TarAddon.CATEGORY, "spectator-camera", "Modifies camera Y level. Used for spectating players while staying above a certain Y");
     }
 
     @Override

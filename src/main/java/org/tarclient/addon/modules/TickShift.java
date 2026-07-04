@@ -125,8 +125,8 @@ public class TickShift extends TarModule {
             }
         } else {
             // movement small :)
-            // increment ticks by 1 if sentmovement is 0
-            // decrease if sentmovement > 1
+            // increment ticks by 1 if sentMovement is 0
+            // decrease if sentMovement > 1
             ticks += 1 - sentMovement;
             ticks = Math.clamp(ticks, 0, chargeTicks.get()); // clamp to 0-charge
         }
@@ -153,7 +153,7 @@ public class TickShift extends TarModule {
         boolean onGround = packet.isOnGround();
 
         if (!packet.changesPosition()) {
-            // only onground
+            // only on-ground
             if (onGround == lastPacketGround) {
                 event.cancel();
             }

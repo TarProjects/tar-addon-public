@@ -66,7 +66,7 @@ public class DropKit extends TarModule {
 
     @EventHandler
     private void onTick(TickEvent.Pre event) {
-        if (!Utils.canUpdate()) {
+        if (mc.player == null) {
             this.toggle();
             return;
         }

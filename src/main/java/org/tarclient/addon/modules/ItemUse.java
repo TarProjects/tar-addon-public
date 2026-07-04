@@ -32,7 +32,7 @@ public class ItemUse extends TarModule {
     int cooldown = 0;
 
     public ItemUse() {
-        super(TarAddon.CATEGORY, "item-use", "Interacts with item");
+        super(TarAddon.CATEGORY, "item-use", "Spams item uses. Useful for e.g. farming xp at spawn on cc");
     }
 
     @Override

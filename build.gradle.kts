@@ -1,3 +1,5 @@
+import org.gradle.api.tasks.javadoc.Javadoc
+
 plugins {
     alias(libs.plugins.fabric.loom)
 }
@@ -54,6 +56,10 @@ tasks {
         from("LICENSE") {
             rename { "${it}_${inputs.properties["archivesName"]}" }
         }
+    }
+
+    withType<Javadoc> {
+        (options as StandardJavadocDocletOptions).tags("concept:a:Concept:")
     }
 
     java {

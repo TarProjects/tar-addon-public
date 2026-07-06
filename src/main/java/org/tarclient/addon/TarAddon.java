@@ -77,6 +77,7 @@ public class TarAddon extends MeteorAddon {
         Modules.get().add(new BreakESP());
         Modules.get().add(new ChinaExploit());
         Modules.get().add(new ChorusESP());
+        Modules.get().add(new ConditionalSilentSwap());
         Modules.get().add(new CopyCat());
         Modules.get().add(new CornerClip());
         Modules.get().add(new CrawlESP());

@@ -12,6 +12,10 @@ import net.minecraft.util.math.Vec3d;
 import org.tarclient.addon.TarAddon;
 import org.tarclient.addon.TarModule;
 
+/**
+ * @concept hekt
+ * @author nullable
+ */
 public class TickShift extends TarModule {
     private final SettingGroup sgGeneral = this.settings.getDefaultGroup();
 

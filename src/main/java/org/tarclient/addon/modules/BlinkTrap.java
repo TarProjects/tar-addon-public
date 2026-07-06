@@ -39,6 +39,10 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
+/**
+ * @concept levent
+ * @author nullable
+ */
 public class BlinkTrap extends TarModule {
     private final SettingGroup sgGeneral = settings.getDefaultGroup();
     private final SettingGroup sgDetection = settings.createGroup("Detection");

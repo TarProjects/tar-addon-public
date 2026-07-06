@@ -29,6 +29,10 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
+/**
+ * @concept levent
+ * @author nullable
+ */
 public class BlinkESP extends TarModule {
     private final SettingGroup sgDetection = settings.createGroup("Detection");
     private final SettingGroup sgRender = settings.createGroup("Render");

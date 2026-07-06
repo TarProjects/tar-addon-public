@@ -20,7 +20,10 @@ import org.tarclient.addon.TarModule;
 
 import java.util.List;
 
-
+/**
+ * @concept levent
+ * @author nullable
+ */
 public class CrystalWaster extends TarModule {
     private final SettingGroup sgGeneral = this.settings.getDefaultGroup();
 

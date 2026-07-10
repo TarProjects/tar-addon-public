@@ -1,6 +1,5 @@
 package org.tarclient.addon.modules;
 
-import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import meteordevelopment.meteorclient.events.packets.PacketEvent;
 import meteordevelopment.meteorclient.events.world.BlockUpdateEvent;
 import meteordevelopment.meteorclient.events.world.TickEvent;
@@ -8,14 +7,8 @@ import meteordevelopment.meteorclient.settings.IntSetting;
 import meteordevelopment.meteorclient.settings.Setting;
 import meteordevelopment.meteorclient.settings.SettingGroup;
 import meteordevelopment.orbit.EventHandler;
-import net.minecraft.network.packet.c2s.play.ClickSlotC2SPacket;
-import net.minecraft.network.packet.c2s.play.PlayerActionC2SPacket;
-import net.minecraft.network.packet.c2s.play.PlayerInteractBlockC2SPacket;
-import net.minecraft.network.packet.c2s.play.UpdateSelectedSlotC2SPacket;
 import net.minecraft.network.packet.s2c.play.PlayerPositionLookS2CPacket;
-import net.minecraft.screen.slot.SlotActionType;
-import net.minecraft.screen.sync.ItemStackHash;
-import net.minecraft.util.math.Vec3d;
+import net.minecraft.util.math.*;
 import org.tarclient.addon.TarAddon;
 import org.tarclient.addon.TarModule;
 import org.tarclient.addon.settings.IntRange;
@@ -67,7 +60,6 @@ public class TestFly extends TarModule {
     @EventHandler
     private void onTickPre(TickEvent.Pre event) {
         if (mc.player == null || mc.world == null) return;
-
     }
 
     @EventHandler
@@ -76,26 +68,8 @@ public class TestFly extends TarModule {
     }
 
     @EventHandler
-    private void onPacketSend(PacketEvent.Send event) {
-        if (event.packet instanceof ClickSlotC2SPacket(int syncId, int revision, short slot, byte button, SlotActionType actionType, Int2ObjectMap<ItemStackHash> modifiedStacks, ItemStackHash cursor)) {
-            System.out.println("ClickSlot");
-            System.out.printf("id: %d, rev: %d, slot %d, button %d, type: %s%n", syncId, revision, slot, button, actionType.name());
-        }
+    private void onPacketSend(PacketEvent.Sent event) {
 
-        if (event.packet instanceof UpdateSelectedSlotC2SPacket packet) {
-            System.out.println("UpdateSlot");
-            System.out.println("slot: " + packet.getSelectedSlot());
-        }
-
-        if (event.packet instanceof PlayerActionC2SPacket packet) {
-            System.out.println("PlayerAction");
-            System.out.printf("action: %s, pos %s, sequence: %s, dir: %s%n", packet.getAction().name(), packet.getPos().toShortString(), packet.getSequence(), packet.getDirection().name());
-        }
-
-        if (event.packet instanceof PlayerInteractBlockC2SPacket packet) {
-            System.out.println("InteractBlock");
-            System.out.printf("hand: %s, blockpos: %s, pos: %s, side: %s%n", packet.getHand().name(), packet.getBlockHitResult().getBlockPos().toShortString(), packet.getBlockHitResult().getPos().toString(), packet.getBlockHitResult().getSide().name());
-        }
     }
 
     // setheadyaw positionsync rotateandmoverelative
@@ -106,6 +80,4 @@ public class TestFly extends TarModule {
             info("flag");
         }
     }
-
-
 }

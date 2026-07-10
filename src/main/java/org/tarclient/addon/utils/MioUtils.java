@@ -106,9 +106,9 @@ public class MioUtils extends GenericUtil {
         toggleNotif();
     }
 
-    public static void resetPacketMine() {
+    public static void resetSpeedMine() {
         if (!mioCompatibility.enabled.get()) return;
-        String packetMine = mioCompatibility.togglePacketMine.get();
+        String packetMine = mioCompatibility.toggleSpeedMine.get();
         if (!packetMine.isEmpty()) {
             toggleModule(packetMine);
             toggleModule(packetMine);
@@ -117,6 +117,10 @@ public class MioUtils extends GenericUtil {
 
     public static void toggleAutoMine(boolean state) {
         toggleModule(mioCompatibility.toggleAutoMine.get(), state);
+    }
+
+    public static void toggleSpeedMine(boolean state) {
+        toggleModule(mioCompatibility.toggleSpeedMine.get(), state);
     }
 
     public static void enableAttackingModules() {
@@ -151,7 +155,7 @@ public class MioUtils extends GenericUtil {
     }
 
     public static double getPacketMineDamage() {
-        return mioCompatibility.packetMineDamage.get();
+        return mioCompatibility.speedMineDamage.get();
     }
 
     public static boolean getAssumeLastBlockState() {

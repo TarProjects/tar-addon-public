@@ -27,7 +27,7 @@ public class MiningUtils {
         MeteorClient.EVENT_BUS.subscribe(MiningUtils.class);
     }
 
-    @EventHandler(priority = EventPriority.HIGH)
+    @EventHandler(priority = EventPriority.LOW)
     private static void onPacketSend(PacketEvent.Sent event) {
         if (event.packet instanceof PlayerActionC2SPacket packet) {
             if (packet.getAction() == PlayerActionC2SPacket.Action.START_DESTROY_BLOCK) {
@@ -82,7 +82,7 @@ public class MiningUtils {
     }
 
     public static void attackWithCompatibility(BlockPos target, Direction side) {
-        MioUtils.resetPacketMine();
+        MioUtils.resetSpeedMine();
         internalAttackBlock(target, side);
     }
 
@@ -103,7 +103,7 @@ public class MiningUtils {
         if (breaking == null) return;
         // stupid i know but i dont have a better way to do this
         queueBreak = breaking;
-        MioUtils.resetPacketMine();
+        MioUtils.resetSpeedMine();
     }
 
     public static Breaking getBreaking() {

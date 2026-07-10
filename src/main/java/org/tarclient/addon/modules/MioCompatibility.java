@@ -37,16 +37,16 @@ public class MioCompatibility extends TarModule {
         .build()
     );
 
-    public final Setting<String> togglePacketMine = sgGeneral.add(new StringSetting.Builder()
-        .name("toggle-packetmine")
+    public final Setting<String> toggleSpeedMine = sgGeneral.add(new StringSetting.Builder()
+        .name("toggle-speedmine")
         .description("How to reset mining progress when needed for compatibility")
         .defaultValue("SpeedMine")
         .wide()
         .build()
     );
 
-    public final Setting<Double> packetMineDamage = sgGeneral.add(new DoubleSetting.Builder()
-        .name("packetmine-damage")
+    public final Setting<Double> speedMineDamage = sgGeneral.add(new DoubleSetting.Builder()
+        .name("speedmine-damage")
         .description("Breaking damage")
         .defaultValue(1)
         .sliderRange(0, 1)

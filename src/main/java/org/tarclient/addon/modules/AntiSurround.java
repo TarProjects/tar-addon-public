@@ -119,7 +119,7 @@ public class AntiSurround extends TarModule {
         .description("Helps with disabling")
         .defaultValue(5)
         .sliderRange(0, 10)
-        .visible(disableSpeedMine::get)
+        .visible(disableAutoMine::get)
         .build()
     );
 

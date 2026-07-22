@@ -30,8 +30,8 @@ import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.math.*;
 import org.tarclient.addon.TarAddon;
 import org.tarclient.addon.TarModule;
+import org.tarclient.addon.events.MioPauseSpeedmineEvent;
 import org.tarclient.addon.utils.ItemExplosionCalculator;
-import org.tarclient.addon.utils.MiningUtils;
 import org.tarclient.addon.utils.MioUtils;
 
 import java.util.*;
@@ -143,7 +143,7 @@ public class AntiSurround extends TarModule {
         .build()
     );
 
-    private final Setting<Boolean> disableSpeedMine = sgReplace.add(new BoolSetting.Builder()
+   /* private final Setting<Boolean> disableSpeedMine = sgReplace.add(new BoolSetting.Builder()
         .name("disable-speed-mine")
         .description("Disables speed-mine")
         .defaultValue(true)
@@ -151,12 +151,14 @@ public class AntiSurround extends TarModule {
         .build()
     );
 
+    */
+
     private final Setting<Integer> speedMineDisableTicks = sgReplace.add(new IntSetting.Builder()
         .name("speed-mine-disable-ticks")
         .description("Helps with disabling")
         .defaultValue(5)
         .sliderRange(0, 10)
-        .visible(() -> disableSpeedMine.get() && replace.get())
+        .visible(replace::get)
         .build()
     );
 
@@ -220,8 +222,6 @@ public class AntiSurround extends TarModule {
     private int enableAutoMine = 0;
     private int enableSpeedMine = 0;
 
-    private BlockPos toClick = null;
-
     public AntiSurround() {
         super(TarAddon.CATEGORY, "anti-surround", "Tries to exploit mechanics in order to deal more damage to people surrounding");
     }
@@ -232,8 +232,14 @@ public class AntiSurround extends TarModule {
         globalCooldown = 0;
         enableAutoMine = 0;
         enableSpeedMine = 0;
+    }
 
-        toClick = null;
+
+    @EventHandler
+    private void onMioSpeedmine(MioPauseSpeedmineEvent event) {
+        if (enableSpeedMine > 0) {
+            event.cancel();
+        }
     }
 
     @EventHandler
@@ -298,11 +304,7 @@ public class AntiSurround extends TarModule {
                     enableAutoMine = autoMineDisableTicks.get();
                 }
 
-                if (disableSpeedMine.get()) {
-                    toClick = broken;
-                    MioUtils.toggleSpeedMine(false);
-                    enableSpeedMine = speedMineDisableTicks.get();
-                }
+                enableSpeedMine = speedMineDisableTicks.get();
 
                 return;
             }
@@ -423,17 +425,8 @@ public class AntiSurround extends TarModule {
                 }
             }
         }
-
-        if (disableSpeedMine.get()) {
-            if (enableSpeedMine > 0) {
-                enableSpeedMine--;
-                if (enableSpeedMine == 0) {
-                    MioUtils.toggleSpeedMine(true);
-                    if (toClick != null) {
-                        MiningUtils.attackWithCompatibility(toClick, Direction.UP);
-                    }
-                }
-            }
+        if (enableSpeedMine > 0) {
+            enableSpeedMine--;
         }
 
         if (globalCooldown > 0) {

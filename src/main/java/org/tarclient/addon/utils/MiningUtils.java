@@ -14,6 +14,7 @@ import net.minecraft.block.Blocks;
 import net.minecraft.network.packet.c2s.play.PlayerActionC2SPacket;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Direction;
+import org.tarclient.addon.events.MioPauseSpeedmineEvent;
 
 import static meteordevelopment.meteorclient.MeteorClient.mc;
 import static org.tarclient.addon.utils.MioUtils.getPacketMineDamage;
@@ -52,7 +53,8 @@ public class MiningUtils {
             if (state.isAir())
                 state = breaking.lastState != null && !breaking.lastState.isAir() ? breaking.lastState : Blocks.OBSIDIAN.getDefaultState();
 
-            if (state.getHardness(mc.world, breaking.blockPos) >= 0) {
+            // check speedmine event for pausing
+            if (state.getHardness(mc.world, breaking.blockPos) >= 0 && !MeteorClient.EVENT_BUS.post(MioPauseSpeedmineEvent.get()).isCancelled()) {
                 FindItemResult fir = InvUtils.findFastestTool(state);
                 int slot = fir.found() ? fir.slot() : mc.player.getInventory().getSelectedSlot();
 
@@ -63,7 +65,8 @@ public class MiningUtils {
                 breaking.deltaRunningCount = adjustedRaw;
                 breaking.runningCount += adjustedRaw;
             } else {
-                breaking.deltaRunningCount = 0;
+                // do we need to?
+                //breaking.deltaRunningCount = 0;
             }
 
             breaking.lastState = state;

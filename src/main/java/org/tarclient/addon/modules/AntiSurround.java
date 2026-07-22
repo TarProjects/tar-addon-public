@@ -7,6 +7,7 @@ import meteordevelopment.meteorclient.renderer.ShapeMode;
 import meteordevelopment.meteorclient.settings.*;
 import meteordevelopment.meteorclient.systems.friends.Friends;
 import meteordevelopment.meteorclient.utils.Utils;
+import meteordevelopment.meteorclient.utils.entity.DamageUtils;
 import meteordevelopment.meteorclient.utils.entity.TargetUtils;
 import meteordevelopment.meteorclient.utils.player.*;
 import meteordevelopment.meteorclient.utils.render.color.Color;
@@ -29,18 +30,18 @@ import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.math.*;
 import org.tarclient.addon.TarAddon;
 import org.tarclient.addon.TarModule;
+import org.tarclient.addon.utils.ItemExplosionCalculator;
 import org.tarclient.addon.utils.MiningUtils;
 import org.tarclient.addon.utils.MioUtils;
 
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import static org.tarclient.addon.utils.MiningUtils.*;
 
 public class AntiSurround extends TarModule {
     private final SettingGroup sgGeneral = this.settings.getDefaultGroup();
+    private final SettingGroup sgDestroyItem = this.settings.createGroup("Destroy Item");
+    private final SettingGroup sgReplace = this.settings.createGroup("Replace");
     private final SettingGroup sgDelay = this.settings.createGroup("Delay");
     private final SettingGroup sgRender = settings.createGroup("Render");
 
@@ -60,25 +61,119 @@ public class AntiSurround extends TarModule {
         .build()
     );
 
-    private final Setting<List<Block>> blocks = sgGeneral.add(new BlockListSetting.Builder()
-        .name("blocks")
-        .description("Primary blocks to use")
-        .defaultValue(Blocks.ANVIL, Blocks.CHIPPED_ANVIL, Blocks.DAMAGED_ANVIL)
-        .build()
-    );
-
-    private final Setting<Boolean> onlyInHole = sgGeneral.add(new BoolSetting.Builder()
-        .name("only-in-hole")
-        .description("Only places if you are in a hole")
+    /* --- Destroy Item --- */
+    private final Setting<Boolean> placeDestroyingCrystal = sgDestroyItem.add(new BoolSetting.Builder()
+        .name("place-destroying-crystal")
+        .description("Should we attempt to place a crystal in order to damage the item dropped by surrounding")
         .defaultValue(true)
         .build()
     );
 
-    private final Setting<Double> minHP = sgGeneral.add(new DoubleSetting.Builder()
+    private final Setting<Double> placeDestroyingCrystalCondition = sgDestroyItem.add(new DoubleSetting.Builder()
+        .name("place-destroying-crystal-condition")
+        .description("How much damage to block before placing crystal")
+        .defaultValue(0.95)
+        .sliderRange(0, 1)
+        .build()
+    );
+
+    private final Setting<Boolean> quickCrystal = sgDestroyItem.add(new BoolSetting.Builder()
+        .name("quick-crystal")
+        .description("Destroy crystal to destroy item -> start crystalling opponent")
+        .defaultValue(true)
+        .build()
+    );
+
+    private final Setting<Double> quickCrystalMinHp = sgDestroyItem.add(new DoubleSetting.Builder()
+        .name("quick-crystal-min-health")
+        .description("Minimum health of this module to quick crystal")
+        .defaultValue(10)
+        .sliderRange(5, 30)
+        .visible(quickCrystal::get)
+        .build()
+    );
+
+    private final Setting<Double> crystalMaxSelfDamage = sgDestroyItem.add(new DoubleSetting.Builder()
+        .name("quick-crystal-max-self-damage")
+        .description("Max self damage for destroying a crystal")
+        .defaultValue(3)
+        .sliderRange(1, 20)
+        .visible(() -> placeDestroyingCrystal.get() || quickCrystal.get())
+        .build()
+    );
+
+    /* --- Replace --- */
+    private final Setting<Boolean> replace = sgReplace.add(new BoolSetting.Builder()
+        .name("replace")
+        .description("Should we replace the block with a faster breakable block?")
+        .defaultValue(true)
+        .build()
+    );
+
+    private final Setting<Double> replacePlaceCondition = sgReplace.add(new DoubleSetting.Builder()
+        .name("replace-place-condition")
+        .description("How much damage to block before placing crystal")
+        .defaultValue(0.8)
+        .sliderRange(0, 1)
+        .build()
+    );
+
+    private final Setting<List<Block>> replaceBlocks = sgReplace.add(new BlockListSetting.Builder()
+        .name("blocks")
+        .description("Primary blocks to use")
+        .defaultValue(Blocks.ANVIL, Blocks.CHIPPED_ANVIL, Blocks.DAMAGED_ANVIL)
+        .visible(replace::get)
+        .build()
+    );
+
+    private final Setting<Boolean> replaceOnlyInHole = sgReplace.add(new BoolSetting.Builder()
+        .name("only-in-hole")
+        .description("Only replaces if you are in a hole")
+        .defaultValue(true)
+        .visible(replace::get)
+        .build()
+    );
+
+    private final Setting<Double> replaceMinHP = sgReplace.add(new DoubleSetting.Builder()
         .name("min-health")
         .description("Minimum health of this module")
         .defaultValue(10)
         .sliderRange(5, 30)
+        .visible(replace::get)
+        .build()
+    );
+
+    private final Setting<Boolean> disableSpeedMine = sgReplace.add(new BoolSetting.Builder()
+        .name("disable-speed-mine")
+        .description("Disables speed-mine")
+        .defaultValue(true)
+        .visible(replace::get)
+        .build()
+    );
+
+    private final Setting<Integer> speedMineDisableTicks = sgReplace.add(new IntSetting.Builder()
+        .name("speed-mine-disable-ticks")
+        .description("Helps with disabling")
+        .defaultValue(5)
+        .sliderRange(0, 10)
+        .visible(() -> disableSpeedMine.get() && replace.get())
+        .build()
+    );
+
+    private final Setting<Boolean> disableAutoMine = sgReplace.add(new BoolSetting.Builder()
+        .name("disable-auto-mine")
+        .description("Disables auto-mine")
+        .defaultValue(true)
+        .visible(replace::get)
+        .build()
+    );
+
+    private final Setting<Integer> autoMineDisableTicks = sgReplace.add(new IntSetting.Builder()
+        .name("auto-mine-disable-ticks")
+        .description("Helps with disabling")
+        .defaultValue(5)
+        .sliderRange(0, 10)
+        .visible(() -> disableAutoMine.get() && replace.get())
         .build()
     );
 
@@ -88,47 +183,6 @@ public class AntiSurround extends TarModule {
         .description("The global cooldown")
         .defaultValue(3)
         .sliderRange(0, 10)
-        .build()
-    );
-
-    private final Setting<Boolean> disableSpeedMine = sgDelay.add(new BoolSetting.Builder()
-        .name("disable-speed-mine")
-        .description("Disables speed-mine")
-        .defaultValue(true)
-        .build()
-    );
-
-    private final Setting<Integer> speedMineDisableTicks = sgDelay.add(new IntSetting.Builder()
-        .name("speed-mine-disable-ticks")
-        .description("Helps with disabling")
-        .defaultValue(5)
-        .sliderRange(0, 10)
-        .visible(disableSpeedMine::get)
-        .build()
-    );
-
-    private final Setting<Boolean> disableAutoMine = sgDelay.add(new BoolSetting.Builder()
-        .name("disable-auto-mine")
-        .description("Disables auto-mine")
-        .defaultValue(true)
-        .build()
-    );
-
-    private final Setting<Integer> autoMineDisableTicks = sgDelay.add(new IntSetting.Builder()
-        .name("auto-mine-disable-ticks")
-        .description("Helps with disabling")
-        .defaultValue(5)
-        .sliderRange(0, 10)
-        .visible(disableAutoMine::get)
-        .build()
-    );
-
-
-    private final Setting<Double> placeConditionSafety = sgDelay.add(new DoubleSetting.Builder()
-        .name("place-condition")
-        .description("How much damage to block before place")
-        .defaultValue(0.8)
-        .sliderRange(0, 1)
         .build()
     );
 
@@ -161,6 +215,7 @@ public class AntiSurround extends TarModule {
     );
 
     private final Map<BlockPos, Double> renderQueue = new HashMap<>();
+
     private int globalCooldown = 0;
     private int enableAutoMine = 0;
     private int enableSpeedMine = 0;
@@ -168,7 +223,7 @@ public class AntiSurround extends TarModule {
     private BlockPos toClick = null;
 
     public AntiSurround() {
-        super(TarAddon.CATEGORY, "anti-surround", "Replaces surround blocks with blocks that are easier to break");
+        super(TarAddon.CATEGORY, "anti-surround", "Tries to exploit mechanics in order to deal more damage to people surrounding");
     }
 
     @Override
@@ -208,30 +263,127 @@ public class AntiSurround extends TarModule {
 
     @EventHandler
     private void onPacketSent(PacketEvent.Sent event) {
-        if (mc.world == null) return;
+        if (mc.player == null || mc.world == null || mc.interactionManager == null) return;
         if (!(event.packet instanceof PlayerActionC2SPacket packet)) return;
         if (!MinecraftClient.getInstance().isOnThread()) return;
         if (packet.getAction() != PlayerActionC2SPacket.Action.STOP_DESTROY_BLOCK) return;
 
-        if (isUnsafe()) return;
         if (globalCooldown > 0) return;
 
         // magic happens here
-        // everything happens after the stop_destroy has been sent, so we can instantly
-        // break crystal and send a new block place without ping contesting as we
-        // know the exact timing
+        // minecraft packets are handled sequentially,
+        // everything happens after the stop_destroy has been sent so we can
+        // time everything instantly
 
-        // NOTE: this runs before MiningUtils gets its own information
+        // NOTE: this event runs before MiningUtils gets its own information
         // so we can use old info from it!
         BlockPos broken = packet.getPos();
 
         if (!broken.equals(getBreakingBlockPos())) return;
 
         // is an actual surround pos that should activate this?
-        if (isValidSurroundPos(broken) == null) return;
+        Target target = isValidSurroundPos(broken);
+        if (target == null) return;
+
+        Direction out = target.direction;
+
+        if (replace.get() && isSafeToReplace() && isValidReplaceSurroundPos(broken, out)) {
+            if (replacedSurround(broken)) {
+                renderQueue.put(broken, fadeTime.get());
+
+                globalCooldown = cooldown.get();
+
+                if (disableAutoMine.get()) {
+                    MioUtils.toggleAutoMine(false);
+                    enableAutoMine = autoMineDisableTicks.get();
+                }
+
+                if (disableSpeedMine.get()) {
+                    toClick = broken;
+                    MioUtils.toggleSpeedMine(false);
+                    enableSpeedMine = speedMineDisableTicks.get();
+                }
+
+                return;
+            }
+        }
+
+        if (quickCrystal.get() && isSafeToQuickCrystal() && hasCrystalPlatformBelow(broken)) {
+            // we should spoof block state for all damage utils, spoof to air -> back
+            BlockState oldState = mc.world.getBlockState(broken);
+            mc.world.setBlockState(broken, Blocks.AIR.getDefaultState());
+
+            if (destroyedCrystal(broken)) {
+                globalCooldown = cooldown.get();
+
+                BlockPos crystalBase = packet.getPos().down();
+
+                if (mc.player.getOffHandStack().getItem() == Items.END_CRYSTAL) {
+                    Vec3d hitPos = crystalBase.toCenterPos().add(0, 0.5, 0);
+
+                    float yaw = (float) Rotations.getYaw(hitPos);
+                    float pitch = (float) Rotations.getPitch(hitPos);
+                    sendRotatePacket(yaw, pitch, RotationPacket.Full);
+
+                    BlockHitResult bhr = new BlockHitResult(hitPos, Direction.UP, crystalBase, false);
+                    if (mc.interactionManager.interactBlock(mc.player, Hand.OFF_HAND, bhr) == ActionResult.SUCCESS) {
+                        mc.player.swingHand(Hand.OFF_HAND);
+                    }
+                }
+            }
+
+            mc.world.setBlockState(broken, oldState);
+        }
+    }
+
+    private boolean isSafeToReplace() {
+        if (mc.player == null) return false;
+        if (mc.player.getHealth() < replaceMinHP.get()) return false;
+        return !replaceOnlyInHole.get() || PlayerUtils.isInHole(true);
+    }
+
+    private boolean isSafeToQuickCrystal() {
+        if (mc.player == null) return false;
+        return !(mc.player.getHealth() < quickCrystalMinHp.get());
+    }
+
+    private boolean destroyedCrystal(BlockPos broken) {
+        if (mc.world == null || mc.player == null) return false;
+
+        EndCrystalEntity entity = getClosestDestroyingCrystal(broken);
+        if (entity == null) return false;
+
+        double yaw = Rotations.getYaw(entity);
+        double pitch = Rotations.getPitch(entity);
+        sendRotatePacket(yaw, pitch, RotationPacket.Full);
+        attack(entity);
+
+        return true;
+    }
+
+    private EndCrystalEntity getClosestDestroyingCrystal(BlockPos broken) {
+        if (mc.player == null || mc.world == null) return null;
+
+        List<EndCrystalEntity> destroyingCrystals = mc.world.getEntitiesByClass(EndCrystalEntity.class, new Box(broken).expand(8), (endCrystalEntity -> {
+            if (mc.player.getEyePos().squaredDistanceTo(endCrystalEntity.getEntityPos()) > blockRange.get() * blockRange.get()) return false;
+            if (!ItemExplosionCalculator.willCrystalDestroyItem(endCrystalEntity.getEntityPos(), broken.toCenterPos())) return false;
+            return DamageUtils.crystalDamage(mc.player, endCrystalEntity.getEntityPos()) < crystalMaxSelfDamage.get();
+        }));
+
+        if (destroyingCrystals.isEmpty()) return null;
+
+        destroyingCrystals.sort(((o1, o2) ->
+            Double.compare(DamageUtils.crystalDamage(mc.player, o1.getEntityPos()), DamageUtils.crystalDamage(mc.player, o2.getEntityPos()))
+        ));
+
+        return destroyingCrystals.getFirst();
+    }
+
+    private boolean replacedSurround(BlockPos broken) {
+        if (mc.world == null) return false;
 
         FindItemResult placeable = findPlaceable();
-        if (!placeable.found()) return;
+        if (!placeable.found()) return false;
         // break (already done) -> attack -> place again
 
         for (Entity entity : mc.world.getEntities()) {
@@ -244,7 +396,7 @@ public class AntiSurround extends TarModule {
             }
         }
 
-        // swap this out
+        // swap this out if needed?
         BlockHitResult blockHitResult = new BlockHitResult(broken.toBottomCenterPos(), Direction.UP, broken.down(), false);
 
         double yaw = Rotations.getYaw(blockHitResult.getPos());
@@ -256,20 +408,7 @@ public class AntiSurround extends TarModule {
         BlockUtils.interact(blockHitResult, placeable.getHand(), true);
         InvUtils.swapBack();
 
-        renderQueue.put(broken, fadeTime.get());
-
-        globalCooldown = cooldown.get();
-
-        if (disableAutoMine.get()) {
-            MioUtils.toggleAutoMine(false);
-            enableAutoMine = autoMineDisableTicks.get();
-        }
-
-        if (disableSpeedMine.get()) {
-            toClick = broken;
-            MioUtils.toggleSpeedMine(false);
-            enableSpeedMine = speedMineDisableTicks.get();
-        }
+        return true;
     }
 
     @EventHandler
@@ -301,29 +440,94 @@ public class AntiSurround extends TarModule {
             globalCooldown--;
         }
 
-        if (isUnsafe()) return;
-
-        if (getBreakingProgress() < placeConditionSafety.get()) return;
-
         BlockPos breaking = getBreakingBlockPos();
         if (breaking == null || mc.world.getBlockState(breaking).isReplaceable()) return;
 
-        Direction outWards = isValidSurroundPos(breaking);
-        if (outWards == null) return;
+        Target target = isValidSurroundPos(breaking);
+        if (target == null) return;
 
-        tryPlaceCrystalOutside(breaking, outWards);
+        Direction outWards = target.direction;
+
+        if (replace.get() && isValidReplaceSurroundPos(breaking, outWards)) {
+            if (getBreakingProgress() < replacePlaceCondition.get()) return;
+            tryPlaceCrystalOutside(breaking, outWards);
+        } else if (placeDestroyingCrystal.get() && isSafeToPlaceDestroyingCrystal() && hasCrystalPlatformBelow(breaking)) {
+            if (getBreakingProgress() < placeDestroyingCrystalCondition.get()) return;
+            // fix calculation with replacing blockstate
+            BlockState oldState = mc.world.getBlockState(breaking);
+            mc.world.setBlockState(breaking, Blocks.AIR.getDefaultState());
+
+            EndCrystalEntity entity = getClosestDestroyingCrystal(breaking);
+
+            if (entity == null) {
+                // place as there wasn't any
+
+                BlockPos crystalBase = findCrystalPosition(breaking, target.player);
+
+                if (crystalBase != null) {
+                    placeCrystalOnBase(crystalBase);
+                }
+            }
+
+            mc.world.setBlockState(breaking, oldState);
+        }
     }
 
-    private boolean isUnsafe() {
-        if (mc.player == null) return true;
-        if (mc.player.getHealth() < minHP.get()) return true;
-        return onlyInHole.get() && !PlayerUtils.isInHole(true);
+    private BlockPos findCrystalPosition(BlockPos centerPos, PlayerEntity target) {
+        if (mc.player == null) return null;
+
+        int radius = 6;
+        Vec3d itemPos = centerPos.toCenterPos();
+
+        BlockPos bestPos = null;
+        double bestDamage = 0;
+
+        for (int dx = -radius; dx <= radius; dx++) {
+            for (int dz = -radius; dz <= radius; dz++) {
+                for (int dy = -radius; dy <= radius; dy++) {
+                    BlockPos basePos = centerPos.add(dx, dy, dz);
+                    if (basePos.equals(centerPos.down())) continue;
+
+                    if (mc.player.getEyePos().squaredDistanceTo(basePos.toCenterPos()) > blockRange.get() * blockRange.get()) continue;
+
+                    if (!isValidCrystalPos(basePos) || !canCrystal(basePos)) continue;
+
+                    Vec3d crystalPos = new Vec3d(basePos.getX() + 0.5, basePos.getY() + 1, basePos.getZ() + 0.5);
+
+                    double dist = crystalPos.distanceTo(itemPos);
+                    if (dist > 2 * 6) continue;
+
+                    if (DamageUtils.crystalDamage(mc.player, crystalPos) > crystalMaxSelfDamage.get()) continue;
+
+                    if (ItemExplosionCalculator.willCrystalDestroyItem(crystalPos, itemPos)) {
+                        double damage = DamageUtils.crystalDamage(target, crystalPos);
+
+                        if (damage > bestDamage) {
+                            bestPos = basePos;
+                            bestDamage = damage;
+                        }
+                    }
+                }
+            }
+        }
+
+        return bestPos;
+    }
+
+    private boolean isSafeToPlaceDestroyingCrystal() {
+        if (mc.player == null) return false;
+        return !(mc.player.getHealth() < quickCrystalMinHp.get());
     }
 
     private void tryPlaceCrystalOutside(BlockPos surroundPos, Direction outwardDir) {
         if (mc.player == null || mc.interactionManager == null) return;
 
         BlockPos crystalBase = surroundPos.offset(outwardDir).down();
+        placeCrystalOnBase(crystalBase);
+    }
+
+    private void placeCrystalOnBase(BlockPos crystalBase) {
+        if (mc.player == null || mc.interactionManager == null) return;
         if (mc.player.squaredDistanceTo(crystalBase.toCenterPos()) > blockRange.get() * blockRange.get()) return;
 
         if (canCrystal(crystalBase)) {
@@ -346,29 +550,29 @@ public class AntiSurround extends TarModule {
         if (mc.world == null) return false;
 
         Box crystalBox = new Box(base.up());
-        return isValidCrystalPos(base) && mc.world.getOtherEntities(null, crystalBox, e -> e instanceof EndCrystalEntity).isEmpty();
+        return isValidCrystalPos(base) && mc.world.getOtherEntities(null, crystalBox, e -> !e.isSpectator()).isEmpty();
     }
 
     public FindItemResult findPlaceable() {
         return InvUtils.findInHotbar(itemStack -> {
             if (itemStack.getItem() instanceof BlockItem) {
                 Block itemBlock = ((BlockItem) itemStack.getItem()).getBlock();
-                return blocks.get().contains(itemBlock);
+                return replaceBlocks.get().contains(itemBlock);
             }
             return false;
         });
     }
 
     // returns null when not valid
-    private Direction isValidSurroundPos(BlockPos pos) {
+    private Target isValidSurroundPos(BlockPos pos) {
         if (mc.world == null || mc.player == null) return null;
 
-        if (mc.player.squaredDistanceTo(pos.toCenterPos()) > blockRange.get() * blockRange.get()) return null;
+        if (mc.player.getEyePos().squaredDistanceTo(pos.toCenterPos()) > targetRange.get() * targetRange.get()) return null;
 
         for (PlayerEntity player : mc.world.getPlayers()) {
             if (TargetUtils.isBadTarget(player, targetRange.get()) || !Friends.get().shouldAttack(player)) continue;
             Direction dir = getSurroundDirection(pos, player.getBlockPos());
-            if (dir != null && isValidSurroundPos(pos, dir)) {
+            if (dir != null && mc.world.getBlockState(pos).getBlock() != Blocks.BEDROCK) {
                 if (player == mc.player) {
                     /* well this is one of the surround blocks of the current player,
                     and we don't want to anti surround ourselves or someone in our
@@ -376,7 +580,7 @@ public class AntiSurround extends TarModule {
                     */
                     return null;
                 }
-                return dir;
+                return new Target(dir, player);
             }
         }
         return null;
@@ -389,15 +593,19 @@ public class AntiSurround extends TarModule {
         return null;
     }
 
-    private boolean isValidSurroundPos(BlockPos pos, Direction outwardDir) {
+    private boolean isValidReplaceSurroundPos(BlockPos pos, Direction outwardDir) {
         if (mc.world == null || mc.player == null) return false;
-        BlockState state = mc.world.getBlockState(pos);
-
-        if (state.getBlock() == Blocks.BEDROCK) return false;
         if (!mc.world.getBlockState(pos.down()).isSolidBlock(mc.world, pos.down())) return false;
 
         BlockPos crystalBase = pos.offset(outwardDir).down();
         return isValidCrystalPos(crystalBase);
+    }
+
+    private boolean hasCrystalPlatformBelow(BlockPos pos) {
+        if (mc.world == null || mc.player == null) return false;
+        BlockState state = mc.world.getBlockState(pos.down());
+
+        return state.getBlock() == Blocks.OBSIDIAN || state.getBlock() == Blocks.BEDROCK;
     }
 
     private boolean isValidCrystalPos(BlockPos base) {
@@ -413,4 +621,6 @@ public class AntiSurround extends TarModule {
         mc.player.swingHand(Hand.MAIN_HAND);
         entity.setRemoved(Entity.RemovalReason.KILLED);
     }
+
+    public record Target(Direction direction, PlayerEntity player) {}
 }

@@ -30,7 +30,7 @@ import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.math.*;
 import org.tarclient.addon.TarAddon;
 import org.tarclient.addon.TarModule;
-import org.tarclient.addon.events.MioPauseSpeedmineEvent;
+import org.tarclient.addon.events.SpeedmineHardnessMultiplierEvent;
 import org.tarclient.addon.utils.ItemExplosionCalculator;
 import org.tarclient.addon.utils.MioUtils;
 
@@ -143,19 +143,9 @@ public class AntiSurround extends TarModule {
         .build()
     );
 
-   /* private final Setting<Boolean> disableSpeedMine = sgReplace.add(new BoolSetting.Builder()
-        .name("disable-speed-mine")
-        .description("Disables speed-mine")
-        .defaultValue(true)
-        .visible(replace::get)
-        .build()
-    );
-
-    */
-
-    private final Setting<Integer> speedMineDisableTicks = sgReplace.add(new IntSetting.Builder()
-        .name("speed-mine-disable-ticks")
-        .description("Helps with disabling")
+    private final Setting<Integer> speedMinePauseTicks = sgReplace.add(new IntSetting.Builder()
+        .name("speed-mine-pause-ticks")
+        .description("Allows to time based on damage frames")
         .defaultValue(5)
         .sliderRange(0, 10)
         .visible(replace::get)
@@ -236,7 +226,7 @@ public class AntiSurround extends TarModule {
 
 
     @EventHandler
-    private void onMioSpeedmine(MioPauseSpeedmineEvent event) {
+    private void onMioSpeedmine(SpeedmineHardnessMultiplierEvent event) {
         if (enableSpeedMine > 0) {
             event.cancel();
         }
@@ -304,7 +294,7 @@ public class AntiSurround extends TarModule {
                     enableAutoMine = autoMineDisableTicks.get();
                 }
 
-                enableSpeedMine = speedMineDisableTicks.get();
+                enableSpeedMine = speedMinePauseTicks.get();
 
                 return;
             }

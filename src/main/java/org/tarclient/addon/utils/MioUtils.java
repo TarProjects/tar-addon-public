@@ -3,6 +3,8 @@ package org.tarclient.addon.utils;
 import meteordevelopment.meteorclient.MeteorClient;
 import meteordevelopment.meteorclient.events.game.ReceiveMessageEvent;
 import meteordevelopment.meteorclient.systems.config.Config;
+import meteordevelopment.meteorclient.systems.modules.Modules;
+import meteordevelopment.meteorclient.systems.modules.world.Timer;
 import meteordevelopment.meteorclient.utils.PreInit;
 import meteordevelopment.meteorclient.utils.player.ChatUtils;
 import meteordevelopment.orbit.EventHandler;
@@ -14,6 +16,7 @@ import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
 import net.minecraft.util.Identifier;
 import org.tarclient.addon.events.SendTypedMessageEvent;
+import org.tarclient.addon.events.SpeedmineHardnessMultiplierEvent;
 import org.tarclient.addon.modules.MioCompatibility;
 
 import java.util.Optional;
@@ -26,6 +29,16 @@ public class MioUtils extends GenericUtil {
     @PreInit
     public static void init() {
         MeteorClient.EVENT_BUS.subscribe(MioUtils.class);
+    }
+
+    @EventHandler
+    private static void onSpeedMineHardnessEvent(SpeedmineHardnessMultiplierEvent event) {
+        if (mioCompatibility.modifySpeedmineHardness.get()) {
+            // multiplier should be timer.multip
+            Timer timer = Modules.get().get(Timer.class);
+            if (timer != null)
+                event.multiplier = (float) timer.getMultiplier();
+        }
     }
 
     @EventHandler

@@ -14,7 +14,7 @@ import net.minecraft.block.Blocks;
 import net.minecraft.network.packet.c2s.play.PlayerActionC2SPacket;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Direction;
-import org.tarclient.addon.events.MioPauseSpeedmineEvent;
+import org.tarclient.addon.events.SpeedmineHardnessMultiplierEvent;
 
 import static meteordevelopment.meteorclient.MeteorClient.mc;
 import static org.tarclient.addon.utils.MioUtils.getPacketMineDamage;
@@ -53,20 +53,22 @@ public class MiningUtils {
             if (state.isAir())
                 state = breaking.lastState != null && !breaking.lastState.isAir() ? breaking.lastState : Blocks.OBSIDIAN.getDefaultState();
 
+
             // check speedmine event for pausing
-            if (state.getHardness(mc.world, breaking.blockPos) >= 0 && !MeteorClient.EVENT_BUS.post(MioPauseSpeedmineEvent.get()).isCancelled()) {
+            SpeedmineHardnessMultiplierEvent speedmineEvent = MeteorClient.EVENT_BUS.post(SpeedmineHardnessMultiplierEvent.get());
+
+            if (state.getHardness(mc.world, breaking.blockPos) >= 0 && !speedmineEvent.isCancelled()) {
                 FindItemResult fir = InvUtils.findFastestTool(state);
                 int slot = fir.found() ? fir.slot() : mc.player.getInventory().getSelectedSlot();
 
                 double raw = TarBlockUtils.getBlockBreakingSpeed(slot, state);
-                double adjustedRaw = raw / damage;
+                // divide raw by multiplier -> 2x multplier = 0.5x raw
+                raw /= speedmineEvent.multiplier;
 
+                double adjustedRaw = raw / damage;
 
                 breaking.deltaRunningCount = adjustedRaw;
                 breaking.runningCount += adjustedRaw;
-            } else {
-                // do we need to?
-                //breaking.deltaRunningCount = 0;
             }
 
             breaking.lastState = state;

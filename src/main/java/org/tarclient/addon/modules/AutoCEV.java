@@ -17,11 +17,10 @@ import net.minecraft.entity.decoration.EndCrystalEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.Items;
 import net.minecraft.screen.slot.SlotActionType;
+import net.minecraft.util.ActionResult;
 import net.minecraft.util.Hand;
-import net.minecraft.util.math.BlockBox;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.Box;
-import net.minecraft.util.math.Direction;
+import net.minecraft.util.hit.BlockHitResult;
+import net.minecraft.util.math.*;
 import net.minecraft.world.GameMode;
 import org.tarclient.addon.TarAddon;
 import org.tarclient.addon.TarModule;
@@ -185,21 +184,13 @@ public class AutoCEV extends TarModule {
         }
 
 
-        boolean intersects = false;
         for (Entity entity : mc.world.getEntities()) {
             if (!(entity instanceof EndCrystalEntity)) continue;
             if (Box.from(new BlockBox(breaking)).intersects(entity.getBoundingBox()) ||
                 Box.from(new BlockBox(breaking.up())).intersects(entity.getBoundingBox())) {
 
-                intersects = true;
                 Rotations.rotate(Rotations.getYaw(entity), Rotations.getPitch(entity), () -> attack(entity));
             }
-        }
-
-        // TODO: SetDead to cev even if crystal in the way
-        if (intersects) {
-            reset();
-            return;
         }
 
         double lastBreakingProgress = getBreakingProgress(Blocks.OBSIDIAN.getDefaultState());
@@ -217,6 +208,8 @@ public class AutoCEV extends TarModule {
 
         // TODO: rotation enums/generic module classes
         TarBlockUtils.InteractRunnable callback = (bhr -> {
+            if (mc.interactionManager == null) return;
+
             double yaw = Rotations.getYaw(bhr.getPos());
             double pitch = Rotations.getPitch(bhr.getPos());
 
@@ -225,6 +218,20 @@ public class AutoCEV extends TarModule {
             swap(obby.slot());
             BlockUtils.interact(bhr, Hand.MAIN_HAND, true);
             swap(obby.slot());
+
+            // we can still place crystals if we have them in offhand
+            // rotation is very similar so not gonna rotate again
+            if (mc.player.getOffHandStack().getItem() != Items.END_CRYSTAL) return;
+
+
+            // recalculate because lambda
+            BlockPos basePosition = bhr.getBlockPos().offset(bhr.getSide());
+            Vec3d hitPos = basePosition.toCenterPos().add(0, 0.5, 0);
+
+            BlockHitResult bhr1 = new BlockHitResult(hitPos, Direction.UP, basePosition, false);
+            if (mc.interactionManager.interactBlock(mc.player, Hand.OFF_HAND, bhr1) == ActionResult.SUCCESS) {
+                mc.player.swingHand(Hand.OFF_HAND);
+            }
         });
 
 
@@ -315,5 +322,6 @@ public class AutoCEV extends TarModule {
 
         mc.interactionManager.attackEntity(mc.player, target);
         mc.player.swingHand(Hand.MAIN_HAND);
+        target.setRemoved(Entity.RemovalReason.KILLED);
     }
 }

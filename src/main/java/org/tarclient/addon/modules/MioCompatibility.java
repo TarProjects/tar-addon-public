@@ -92,13 +92,13 @@ public class MioCompatibility extends TarModule {
         .build()
     );
 
-
     public final Setting<List<String>> toggleAttackingModules = sgGeneral.add(new StringListSetting.Builder()
         .name("toggle-attacking-modules")
         .description("Modules to toggle in each their own line. Leave as empty to disable")
         .defaultValue("Aura", "CrystalAura", "HoleFill")
         .build()
     );
+
     public final Setting<String> warnFriendSyncPattern = sgGeneral.add(new StringSetting.Builder()
         .name("warn-friend-sync-pattern")
         .description("Regex pattern on when to warn on friend sync. DO NOT CHANGE; FRAGILE")
@@ -107,6 +107,14 @@ public class MioCompatibility extends TarModule {
         .wide()
         .build()
     );
+
+    public final Setting<Boolean> modifySpeedmineHardness = sgGeneral.add(new BoolSetting.Builder()
+        .name("modify-speedmine-hardness")
+        .description("Modifies the speedmine hardness to not break blocks faster than vanilla (Timer override)")
+        .defaultValue(true)
+        .build()
+    );
+
     private final SettingGroup sgFriends = this.settings.createGroup("Friends");
 
 

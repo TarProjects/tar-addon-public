@@ -62,7 +62,6 @@ public class SelfFill extends TarModule {
     );
 
     /* --- Attack --- */
-
     private final Setting<Boolean> attack = sgAttack.add(new BoolSetting.Builder()
         .name("attack")
         .description("Attacks crystals if they are in the way")

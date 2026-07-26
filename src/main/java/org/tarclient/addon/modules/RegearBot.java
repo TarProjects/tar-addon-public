@@ -267,7 +267,7 @@ public class RegearBot extends TarModule {
     }
 
 
-    enum Stage {
+    private enum Stage {
         None,
         Wait,
         Pot,

@@ -148,7 +148,7 @@ public class AutoSpectator extends TarModule {
         }
     }
 
-    enum Stage {
+    private enum Stage {
         WaitForMessage,
         Delay,
         Messages,

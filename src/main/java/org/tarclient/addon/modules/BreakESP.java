@@ -174,7 +174,7 @@ public class BreakESP extends TarModule {
         return new Box(minX, minY, minZ, maxX, maxY, maxZ);
     }
 
-    enum Animation {
+    private enum Animation {
         Static,
         Grow,
         Shrink,

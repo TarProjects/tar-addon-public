@@ -150,7 +150,7 @@ public class DropKit extends TarModule {
 
     }
 
-    enum Stage {
+    private enum Stage {
         DropArmor,
         WaitForArmor,
         DropOffhand,

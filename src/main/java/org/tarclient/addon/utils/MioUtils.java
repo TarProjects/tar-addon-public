@@ -132,8 +132,8 @@ public class MioUtils extends GenericUtil {
         toggleModule(mioCompatibility.toggleAutoMine.get(), state);
     }
 
-    public static void toggleSpeedMine(boolean state) {
-        toggleModule(mioCompatibility.toggleSpeedMine.get(), state);
+    public static void toggleOffhand(boolean state) {
+        toggleModule(mioCompatibility.toggleOffhand.get(), state);
     }
 
     public static void enableAttackingModules() {

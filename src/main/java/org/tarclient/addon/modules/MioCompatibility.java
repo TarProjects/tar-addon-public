@@ -53,6 +53,14 @@ public class MioCompatibility extends TarModule {
         .build()
     );
 
+    public final Setting<String> toggleOffhand = sgGeneral.add(new StringSetting.Builder()
+        .name("toggle-offhand")
+        .description("Toggles offhand")
+        .defaultValue("Offhand")
+        .wide()
+        .build()
+    );
+
     public final Setting<Boolean> assumeLastBlockState = sgGeneral.add(new BoolSetting.Builder()
         .name("assume-last-blockstate")
         .description("Assumes last blockstate if air. Otherwise default to obsidian")

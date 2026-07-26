@@ -65,6 +65,7 @@ public class TarAddon extends MeteorAddon {
     public void onInitialize() {
         Modules.get().add(new AntiPearl());
         Modules.get().add(new AntiSurround());
+        Modules.get().add(new AnvilSuicide());
         Modules.get().add(new ArenaReset());
         Modules.get().add(new AutoCEV());
         Modules.get().add(new AutoDuelAccept());

@@ -90,13 +90,19 @@ public class TarBlockUtils {
 
 
     public static HitResult raycastBlocks(double distance) {
-        if (mc.getCameraEntity() == null || mc.world == null) return null;
-
         Camera camera = mc.gameRenderer.getCamera();
+        if (camera == null) return null;
         Vec3d cameraPos = camera.getCameraPos();
 
         float yaw = camera.getYaw();
         float pitch = camera.getPitch();
+
+        return raycastBlocks(distance, yaw, pitch, cameraPos);
+    }
+
+    public static HitResult raycastBlocks(double distance, float yaw, float pitch, Vec3d cameraPos) {
+        if (mc.getCameraEntity() == null || mc.world == null) return null;
+
         float f = MathHelper.cos(-yaw * ((float) Math.PI / 180) - (float) Math.PI);
         float g = MathHelper.sin(-yaw * ((float) Math.PI / 180) - (float) Math.PI);
         float h = -MathHelper.cos(-pitch * ((float) Math.PI / 180));

@@ -81,12 +81,14 @@ public class TarAddon extends MeteorAddon {
         Modules.get().add(new ConditionalSilentSwap());
         Modules.get().add(new CopyCat());
         Modules.get().add(new CornerClip());
+        Modules.get().add(new Crasher());
         Modules.get().add(new CrawlESP());
         Modules.get().add(new CrystalWaster());
         Modules.get().add(new DropKit());
         Modules.get().add(new Flattener());
         Modules.get().add(new GridFiller());
         Modules.get().add(new HeadBurrow());
+        Modules.get().add(new IAmAFailure());
         Modules.get().add(new InfiniteNameTags());
         Modules.get().add(new InfiniteNameTagsTeleporter());
         Modules.get().add(new InventoryFixes());

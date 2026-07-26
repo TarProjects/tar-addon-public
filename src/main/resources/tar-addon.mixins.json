@@ -18,6 +18,7 @@
   "client": [
     "CameraMixin",
     "ChatScreenMixin",
+    "ClientPlayerInteractionManagerMixin",
     "ClientPlayNetworkHandlerMixin",
     "ElementMixin",
     "EntityRenderManagerMixin",

@@ -1,20 +1,27 @@
 package org.tarclient.addon.modules;
 
 import meteordevelopment.meteorclient.events.packets.PacketEvent;
+import meteordevelopment.meteorclient.events.render.Render3DEvent;
 import meteordevelopment.meteorclient.events.world.TickEvent;
+import meteordevelopment.meteorclient.renderer.ShapeMode;
 import meteordevelopment.meteorclient.settings.*;
 import meteordevelopment.meteorclient.systems.friends.Friends;
 import meteordevelopment.meteorclient.utils.Utils;
-import meteordevelopment.meteorclient.utils.entity.TargetUtils;
+import meteordevelopment.meteorclient.utils.entity.DamageUtils;
 import meteordevelopment.meteorclient.utils.player.*;
+import meteordevelopment.meteorclient.utils.render.color.Color;
+import meteordevelopment.meteorclient.utils.render.color.SettingColor;
 import meteordevelopment.orbit.EventHandler;
+import net.minecraft.block.BlockState;
 import net.minecraft.block.Blocks;
+import net.minecraft.client.network.AbstractClientPlayerEntity;
+import net.minecraft.entity.EntityType;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.Items;
-import net.minecraft.network.packet.c2s.play.PlayerActionC2SPacket;
 import net.minecraft.network.packet.c2s.play.PlayerInteractBlockC2SPacket;
 import net.minecraft.network.packet.c2s.play.PlayerMoveC2SPacket;
 import net.minecraft.screen.slot.SlotActionType;
+import net.minecraft.text.Text;
 import net.minecraft.util.Hand;
 import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.hit.HitResult;
@@ -29,12 +36,12 @@ import java.util.*;
 
 public class IAmAFailure extends TarModule {
     private final SettingGroup sgGeneral = this.settings.getDefaultGroup();
+    private final SettingGroup sgRender = settings.createGroup("Render");
 
-    private final Setting<Double> targetRange = sgGeneral.add(new DoubleSetting.Builder()
-        .name("target-range")
-        .description("Maximum distance of target")
-        .defaultValue(5.2)
-        .sliderRange(0, 6)
+    private final Setting<Boolean> larp = sgGeneral.add(new BoolSetting.Builder()
+        .name("larp")
+        .description("larpppppppp")
+        .defaultValue(true)
         .build()
     );
 
@@ -62,12 +69,57 @@ public class IAmAFailure extends TarModule {
         .build()
     );
 
+    private final Setting<Integer> depth = sgGeneral.add(new IntSetting.Builder()
+        .name("depth")
+        .description("Depth of the larp")
+        .defaultValue(3)
+        .sliderRange(0, 6)
+        .build()
+    );
+
+    private final Setting<Double> minDmg = sgGeneral.add(new DoubleSetting.Builder()
+        .name("min-dmg")
+        .description("Minimum damage to start the larp")
+        .defaultValue(5)
+        .sliderRange(0, 15)
+        .build()
+    );
+
     private final Setting<Boolean> swap = sgGeneral.add(new BoolSetting.Builder()
         .name("swap")
         .description("Swaps...")
-        .defaultValue(false)
+        .defaultValue(true)
         .build()
     );
+
+    private final Setting<Double> fadeTime = sgRender.add(new DoubleSetting.Builder()
+        .name("fade-time")
+        .description("How many seconds should rendering take?")
+        .defaultValue(0.2)
+        .sliderRange(0, 3)
+        .build()
+    );
+
+    private final Setting<ShapeMode> shapeMode = sgRender.add(new EnumSetting.Builder<ShapeMode>()
+        .name("shape-mode")
+        .description("How the shapes are rendered.")
+        .defaultValue(ShapeMode.Both)
+        .build()
+    );
+
+    private final Setting<SettingColor> sideColor = sgRender.add(new ColorSetting.Builder()
+        .name("side-color")
+        .defaultValue(new SettingColor(255, 0, 0, 70))
+        .build()
+    );
+
+    private final Setting<SettingColor> lineColor = sgRender.add(new ColorSetting.Builder()
+        .name("line-color")
+        .defaultValue(new SettingColor(255, 0, 0))
+        .build()
+    );
+
+    private final Map<BlockPos, Double> renderQueue = new HashMap<>();
 
     private int globalCooldown = 0;
     private float lastYaw;
@@ -89,6 +141,32 @@ public class IAmAFailure extends TarModule {
         lastPitch = mc.player.getPitch();
 
         ignoreSwap = false;
+        renderQueue.clear();
+    }
+
+    @EventHandler
+    private void onRender(Render3DEvent event) {
+        Iterator<Map.Entry<BlockPos, Double>> it = renderQueue.entrySet().iterator();
+
+        while (it.hasNext()) {
+            Map.Entry<BlockPos, Double> entry = it.next();
+            double remaining = entry.getValue();
+
+            if (remaining <= 0) {
+                it.remove();
+                continue;
+            }
+
+            double alphaMultip = Math.clamp(remaining / fadeTime.get(), 0, 1);
+
+            // uhh multiply alpha ig?
+            Color side = sideColor.get().copy().a((int) (sideColor.get().a * alphaMultip));
+            Color line = lineColor.get().copy().a((int) (lineColor.get().a * alphaMultip));
+
+            event.renderer.box(entry.getKey(), side, line, shapeMode.get(), 0);
+
+            entry.setValue(remaining - (float) event.frameTime);
+        }
     }
 
 
@@ -104,42 +182,17 @@ public class IAmAFailure extends TarModule {
         if (event.actionType != SlotActionType.SWAP) return; // only allow alt swap because why not
 
         // check if we should break this
-        if (isValidSurroundPos(MiningUtils.getBreakingBlockPos())) {
-            // do module
-            // rely on chipped anvils on mainhand, or swap to them
-            // store slot
-            int slot = -1;
-            if (swap.get()) {
-                FindItemResult result = InvUtils.find(Items.CHIPPED_ANVIL);
-                if (!result.found()) return;
+        BlockPos breakingPos = MiningUtils.getBreakingBlockPos();
 
-                // found, swap
-                swap(result.slot());
-                slot = result.slot();
-            } else {
-                // check if we have anvil in hand rn
-                if (mc.player.getInventory().getSelectedStack().getItem() != Items.CHIPPED_ANVIL) return;
-            }
+        BlockState state = mc.world.getBlockState(breakingPos);
+        // replaceable: mining not truly finished
+        if (state.isReplaceable()) return;
 
-
-            HitResult hitResult = TarBlockUtils.raycastBlocks(reach.get(), lastYaw, lastPitch, mc.player.getEyePos());
-            if (hitResult == null || hitResult.getType().equals(HitResult.Type.MISS) || !(hitResult instanceof BlockHitResult bhr)) {
-                // raytrace miss -> should not happen unless reach is too low
-                return;
-            }
-
-            // magic v2
-            for (int i = 0; i < 25; i++) {
-                sendPacket(new PlayerInteractBlockC2SPacket(Hand.MAIN_HAND, bhr, 0));
-            }
-
-            // swap back
-            if (swap.get()) {
-                swap(slot);
-            }
-
-            globalCooldown = cooldown.get();
+        mc.world.setBlockState(breakingPos, Blocks.AIR.getDefaultState());
+        if (hasPotential(breakingPos, state, minDmg.get(), depth.get())) {
+            ssdfg_00000(breakingPos);
         }
+        mc.world.setBlockState(breakingPos, state);
     }
 
     @EventHandler
@@ -149,11 +202,12 @@ public class IAmAFailure extends TarModule {
             lastPitch = packet.getPitch(lastPitch);
         }
 
+        /*
         if (event.packet instanceof PlayerActionC2SPacket packet && packet.getAction() == PlayerActionC2SPacket.Action.STOP_DESTROY_BLOCK) {
-            // generalize this to get also from stop_break if no swap happened
-            // bait
-            //this.onClick(ClickSlotEvent.get(0,0,0,SlotActionType.SWAP,mc.player));
+            // TODO: if no swap happened, we can also do at this stage, it will still work
+
         }
+         */
     }
 
     @EventHandler
@@ -165,39 +219,147 @@ public class IAmAFailure extends TarModule {
         }
     }
 
+    // Megumi Fushiguro
+    private boolean hasPotential(BlockPos breakPos, BlockState oldState, double minDmg, int floodDepth) {
+        if (mc.world == null) return false;
+
+        Set<BlockPos> visited = new HashSet<>();
+        ArrayDeque<BlockPos> queue = new ArrayDeque<>();
+
+        List<AbstractClientPlayerEntity> candidates = mc.world.getPlayers().stream()
+            .filter(p -> p != mc.player)
+            .filter(p -> !p.isSpectator())
+            .filter(p -> !p.isCreative())
+            .filter(p -> Friends.get().shouldAttack(p))
+            .filter(p -> p.squaredDistanceTo(Vec3d.ofCenter(breakPos)) <= 12 * 12)
+            .toList();
+
+        if (candidates.isEmpty()) return false;
+
+        queue.add(breakPos);
+        visited.add(breakPos);
+
+        Set<BlockPos> crystalBases = new HashSet<>();
+
+        while (!queue.isEmpty()) {
+            BlockPos airPos = queue.poll();
+
+            if (airPos.getSquaredDistance(breakPos) > floodDepth * floodDepth)
+                continue;
+
+            BlockState base = mc.world.getBlockState(airPos.down());
+
+            if ((base.isOf(Blocks.OBSIDIAN) || base.isOf(Blocks.BEDROCK))
+                && mc.world.getBlockState(airPos).isAir()) {
+                if (mc.world.getOtherEntities(null, new Box(airPos), (entity -> {
+                    // goofy predicate to get all entities except spectators & end crystals already placed in the position
+                    if (entity.isSpectator()) return false;
+                    return !entity.getType().equals(EntityType.END_CRYSTAL) || !entity.getBlockPos().equals(airPos);
+                })).isEmpty())
+                    crystalBases.add(airPos.down());
+            }
+
+
+            for (Direction dir : Direction.values()) {
+                BlockPos next = airPos.offset(dir);
+
+                if (!visited.add(next))
+                    continue;
+
+                if (!mc.world.getBlockState(next).isAir())
+                    continue;
+
+                queue.add(next);
+            }
+
+            // stupid af
+            if (visited.size() > 1000)
+                break;
+        }
+
+        for (BlockPos base : crystalBases) {
+            BlockPos crystalPos = base.up();
+            Vec3d crystalVec = Vec3d.ofBottomCenter(crystalPos);
+
+            for (PlayerEntity player : candidates) {
+                if (player.squaredDistanceTo(crystalVec) > 8 * 8)
+                    continue;
+
+                // as air
+                mc.world.setBlockState(breakPos, Blocks.AIR.getDefaultState());
+                double damageAir = DamageUtils.crystalDamage(player, crystalVec);
+
+                if (damageAir < minDmg) {
+                    // fah no
+                    continue;
+                }
+
+                // bugged tf out unless we guard this
+                if (!base.up().equals(breakPos)) {
+                    mc.world.setBlockState(breakPos, oldState);
+                    double damageObby = DamageUtils.crystalDamage(player, crystalVec);
+
+                    if (damageAir - damageObby < minDmg) {
+                        // difference too low, probably invalid
+                        continue;
+                    }
+                }
+
+                // differences good enough OR breakPos deals damageAir
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private void ssdfg_00000(BlockPos blockPos) {
+        if (mc.player == null) return;
+        // do module
+        // rely on chipped anvils on mainhand, or swap to them
+        // store slot
+        int slot = -1;
+        if (swap.get()) {
+            FindItemResult result = InvUtils.find(Items.CHIPPED_ANVIL);
+            if (!result.found()) return;
+
+            // found, swap
+            swap(result.slot());
+            slot = result.slot();
+        } else {
+            // check if we have anvil in hand rn
+            if (mc.player.getInventory().getSelectedStack().getItem() != Items.CHIPPED_ANVIL) return;
+        }
+
+        // TODO: better raycast or rotate down if entities in the way? somethings wrong when preplacing
+        HitResult hitResult = TarBlockUtils.raycastBlocks(reach.get(), lastYaw, lastPitch, mc.player.getEyePos());
+        if (hitResult == null || hitResult.getType().equals(HitResult.Type.MISS) || !(hitResult instanceof BlockHitResult bhr)) {
+            // raytrace miss -> should not happen unless reach is too low
+            return;
+        }
+
+        // magic v2
+        for (int i = 0; i < 25; i++) {
+            sendPacket(new PlayerInteractBlockC2SPacket(Hand.MAIN_HAND, bhr, 0));
+        }
+
+        // swap back
+        if (swap.get()) {
+            swap(slot);
+        }
+
+        if (larp.get()) {
+            addMsg(Text.of(String.format("Changed the block at %d, %d, %d", blockPos.getX(), blockPos.getY(), blockPos.getZ())), 0);
+        }
+
+        renderQueue.put(blockPos, fadeTime.get());
+        globalCooldown = cooldown.get();
+    }
+
     private void swap(int slot) {
         if (mc.interactionManager == null || mc.player == null) return;
         ignoreSwap = true;
         mc.interactionManager.clickSlot(mc.player.currentScreenHandler.syncId, SlotUtils.indexToId(slot), mc.player.getInventory().getSelectedSlot(), SlotActionType.SWAP, mc.player);
         ignoreSwap = false;
-    }
-
-    private boolean isValidSurroundPos(BlockPos pos) {
-        if (mc.world == null || mc.player == null) return false;
-
-        if (mc.player.getEyePos().squaredDistanceTo(pos.toCenterPos()) > targetRange.get() * targetRange.get()) return false;
-
-        boolean isValid = false;
-
-        for (PlayerEntity player : mc.world.getPlayers()) {
-            // skip player
-            if (player == mc.player) continue;
-            if (TargetUtils.isBadTarget(player, targetRange.get())) continue;
-            Direction dir = getSurroundDirection(pos, player.getBlockPos());
-            if (dir != null && mc.world.getBlockState(pos).getBlock() != Blocks.BEDROCK) {
-                // dont want our friend to desync :D
-                if (!Friends.get().shouldAttack(player)) return false;
-                // keep scanning for friends...
-                isValid = true;
-            }
-        }
-        return isValid;
-    }
-
-    private Direction getSurroundDirection(BlockPos surroundPos, BlockPos feet) {
-        for (Direction dir : Direction.Type.HORIZONTAL) {
-            if (feet.offset(dir).equals(surroundPos)) return dir;
-        }
-        return null;
     }
 }

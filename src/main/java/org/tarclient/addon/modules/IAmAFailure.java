@@ -8,7 +8,10 @@ import meteordevelopment.meteorclient.settings.*;
 import meteordevelopment.meteorclient.systems.friends.Friends;
 import meteordevelopment.meteorclient.utils.Utils;
 import meteordevelopment.meteorclient.utils.entity.DamageUtils;
-import meteordevelopment.meteorclient.utils.player.*;
+import meteordevelopment.meteorclient.utils.player.FindItemResult;
+import meteordevelopment.meteorclient.utils.player.InvUtils;
+import meteordevelopment.meteorclient.utils.player.Rotations;
+import meteordevelopment.meteorclient.utils.player.SlotUtils;
 import meteordevelopment.meteorclient.utils.render.color.Color;
 import meteordevelopment.meteorclient.utils.render.color.SettingColor;
 import meteordevelopment.orbit.EventHandler;
@@ -17,6 +20,7 @@ import net.minecraft.block.Blocks;
 import net.minecraft.client.network.AbstractClientPlayerEntity;
 import net.minecraft.entity.EntityType;
 import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
 import net.minecraft.network.packet.c2s.play.PlayerInteractBlockC2SPacket;
 import net.minecraft.network.packet.c2s.play.PlayerMoveC2SPacket;
@@ -24,13 +28,14 @@ import net.minecraft.screen.slot.SlotActionType;
 import net.minecraft.text.Text;
 import net.minecraft.util.Hand;
 import net.minecraft.util.hit.BlockHitResult;
-import net.minecraft.util.hit.HitResult;
-import net.minecraft.util.math.*;
+import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.Box;
+import net.minecraft.util.math.Direction;
+import net.minecraft.util.math.Vec3d;
 import org.tarclient.addon.TarAddon;
 import org.tarclient.addon.TarModule;
 import org.tarclient.addon.events.ClickSlotEvent;
 import org.tarclient.addon.utils.MiningUtils;
-import org.tarclient.addon.utils.TarBlockUtils;
 
 import java.util.*;
 
@@ -125,7 +130,7 @@ public class IAmAFailure extends TarModule {
     private float lastYaw;
     private float lastPitch;
 
-    boolean ignoreSwap = false;
+    boolean ignoreSwap;
 
     public IAmAFailure() {
         super(TarAddon.CATEGORY, "i-am-a-failure", "Spreads the agenda");
@@ -139,9 +144,9 @@ public class IAmAFailure extends TarModule {
 
         lastYaw = mc.player.getYaw();
         lastPitch = mc.player.getPitch();
+        renderQueue.clear();
 
         ignoreSwap = false;
-        renderQueue.clear();
     }
 
     @EventHandler
@@ -169,22 +174,32 @@ public class IAmAFailure extends TarModule {
         }
     }
 
-
-    // mio sends swap differently so use clickslotevent
     @EventHandler
     private void onClick(ClickSlotEvent event) {
-        // avoid recursion on swap method
-        if (ignoreSwap) return;
         if (mc.player == null || mc.world == null || mc.interactionManager == null) return;
-        // we dont care about this swap..
+        // recursion
+        if (ignoreSwap) return;
         if (globalCooldown > 0) return;
-        if (MiningUtils.getBreakingProgress() < progress.get()) return;
-        if (event.actionType != SlotActionType.SWAP) return; // only allow alt swap because why not
 
-        // check if we should break this
         BlockPos breakingPos = MiningUtils.getBreakingBlockPos();
 
+        if (MiningUtils.getBreakingProgress() < progress.get()) return;
+        if (breakingPos == null) return;
+        if (breakingPos.toCenterPos().squaredDistanceTo(mc.player.getEyePos()) > reach.get() * reach.get()) return;
+
+
+        // we dont care about this swap..
+        if (event.actionType != SlotActionType.SWAP) return;
+        if (event.button != mc.player.getInventory().getSelectedSlot()) return; // swap to current hand
+        ItemStack stack = mc.player.currentScreenHandler.getSlot(event.slotId).getStack();
+        if (stack == null || stack.isEmpty()) return;
+
+        // check if we should break this
         BlockState state = mc.world.getBlockState(breakingPos);
+
+        // 1 last check for item: is suitable?
+        if (!stack.isSuitableFor(state)) return;
+
         // replaceable: mining not truly finished
         if (state.isReplaceable()) return;
 
@@ -196,26 +211,18 @@ public class IAmAFailure extends TarModule {
     }
 
     @EventHandler
+    private void onTickPre(TickEvent.Pre event) {
+        if (!Utils.canUpdate() || mc.player == null || mc.world == null) return;
+        if (globalCooldown > 0) {
+            globalCooldown--;
+        }
+    }
+
+    @EventHandler
     private void onPacketSend(PacketEvent.Send event) {
         if (event.packet instanceof PlayerMoveC2SPacket packet) {
             lastYaw = packet.getYaw(lastYaw);
             lastPitch = packet.getPitch(lastPitch);
-        }
-
-        /*
-        if (event.packet instanceof PlayerActionC2SPacket packet && packet.getAction() == PlayerActionC2SPacket.Action.STOP_DESTROY_BLOCK) {
-            // TODO: if no swap happened, we can also do at this stage, it will still work
-
-        }
-         */
-    }
-
-    @EventHandler
-    private void onTickPre(TickEvent.Pre event) {
-        if (!Utils.canUpdate() || mc.player == null || mc.world == null) return;
-
-        if (globalCooldown > 0) {
-            globalCooldown--;
         }
     }
 
@@ -331,12 +338,11 @@ public class IAmAFailure extends TarModule {
             if (mc.player.getInventory().getSelectedStack().getItem() != Items.CHIPPED_ANVIL) return;
         }
 
-        // TODO: better raycast or rotate down if entities in the way? somethings wrong when preplacing
-        HitResult hitResult = TarBlockUtils.raycastBlocks(reach.get(), lastYaw, lastPitch, mc.player.getEyePos());
-        if (hitResult == null || hitResult.getType().equals(HitResult.Type.MISS) || !(hitResult instanceof BlockHitResult bhr)) {
-            // raytrace miss -> should not happen unless reach is too low
-            return;
-        }
+        // rotate down
+        double yaw = Rotations.getYaw(mc.player.getBlockPos().toBottomCenterPos());
+        double pitch = Rotations.getPitch(mc.player.getBlockPos().toBottomCenterPos());
+        sendRotatePacket(yaw, pitch, RotationPacket.Full);
+        BlockHitResult bhr = new BlockHitResult(mc.player.getBlockPos().toBottomCenterPos(), Direction.UP, mc.player.getBlockPos().down(), false);
 
         // magic v2
         for (int i = 0; i < 25; i++) {

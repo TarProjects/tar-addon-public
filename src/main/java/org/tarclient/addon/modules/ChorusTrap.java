@@ -13,13 +13,14 @@ import meteordevelopment.meteorclient.utils.render.color.Color;
 import meteordevelopment.meteorclient.utils.render.color.SettingColor;
 import meteordevelopment.meteorclient.utils.world.BlockUtils;
 import meteordevelopment.orbit.EventHandler;
-import net.minecraft.block.BlockState;
+import net.fabricmc.loader.impl.lib.sat4j.core.Vec;
 import net.minecraft.block.Blocks;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.Items;
 import net.minecraft.sound.SoundEvents;
 import net.minecraft.util.math.*;
+import net.minecraft.world.WorldView;
 import org.tarclient.addon.TarAddon;
 import org.tarclient.addon.TarModule;
 import org.tarclient.addon.utils.TarBlockUtils;
@@ -54,10 +55,9 @@ public class ChorusTrap extends TarModule {
         .build()
     );
 
-
-    private final Setting<Boolean> avoidFeet = sgGeneral.add(new BoolSetting.Builder()
-        .name("avoid-feet")
-        .description("Avoids placing inside the feet blockposition")
+    private final Setting<Boolean> instant = sgGeneral.add(new BoolSetting.Builder()
+        .name("instant")
+        .description("Catch at sound event instead of tick thread")
         .defaultValue(true)
         .build()
     );
@@ -66,14 +66,6 @@ public class ChorusTrap extends TarModule {
         .name("blocks-per-tick")
         .description("How many blocks to place per tick (max)")
         .defaultValue(2)
-        .sliderRange(0, 8)
-        .build()
-    );
-
-    private final Setting<Integer> maxDepth = sgGeneral.add(new IntSetting.Builder()
-        .name("max-depth")
-        .description("Depth of support search tree")
-        .defaultValue(5)
         .sliderRange(0, 8)
         .build()
     );
@@ -115,7 +107,7 @@ public class ChorusTrap extends TarModule {
         .build()
     );
 
-    private final List<Vec3d> nonFilledChorusPositions = new ArrayList<>();
+    private final List<Vec3d> chorusPositions = new ArrayList<>();
     private final List<BlockPos> placePositions = new ArrayList<>();
     private final Map<BlockPos, Double> renderQueue = new HashMap<>();
 
@@ -128,62 +120,94 @@ public class ChorusTrap extends TarModule {
     @Override
     public void onActivate() {
         cooldown = 0;
-        nonFilledChorusPositions.clear();
+        chorusPositions.clear();
         placePositions.clear();
         renderQueue.clear();
     }
 
     @EventHandler
     private void onPlaySound(PlaySoundEvent event) {
-        if (mc.player == null) return;
+        if (mc.player == null || mc.world == null) return;
+        if (!event.sound.getId().equals(SoundEvents.ITEM_CHORUS_FRUIT_TELEPORT.id())) return;
+        if (!mc.isOnThread()) return; // never happens, safety tho
 
-        if (event.sound.getId().equals(SoundEvents.ITEM_CHORUS_FRUIT_TELEPORT.id())) {
-            Vec3d vec = new Vec3d(event.sound.getX(), event.sound.getY(), event.sound.getZ());
-            nonFilledChorusPositions.add(vec);
-        }
-    }
+        Vec3d vec = new Vec3d(event.sound.getX(), event.sound.getY(), event.sound.getZ());
+        Box targetBox = getBox(vec);
 
-    @EventHandler
-    private void onTickPre(TickEvent.Pre event) {
-        if (mc.world == null || mc.player == null) return;
+        boolean intersects = !mc.world.getEntitiesByClass(LivingEntity.class, targetBox, (entity) -> true).isEmpty();
+        if (intersects) return;
+        if (lastTickBB(mc.player).intersects(targetBox)) return; // own tp
 
-        placePositions.clear();
+        chorusPositions.add(vec);
 
-        // remove here, otherwise issues with cooldown race condition
-        nonFilledChorusPositions.removeIf((vec3d -> {
-            BlockPos blockPos = BlockPos.ofFloored(vec3d);
-            BlockState head = mc.world.getBlockState(blockPos.up());
-            if (!head.isReplaceable())
-                return true;
+        if (!instant.get()) return; // instant logic from here on out
 
-            double min_x = vec3d.x - 0.6 / 2;
-            double max_x = vec3d.x + 0.6 / 2;
-
-            double max_y = vec3d.y + 1.6;
-
-            double min_z = vec3d.z - 0.6 / 2;
-            double max_z = vec3d.z + 0.6 / 2;
-            return !mc.world.getEntitiesByClass(LivingEntity.class, new Box(min_x, vec3d.y, min_z, max_x, max_y, max_z), (entity) -> true).isEmpty();
-        }));
-
-        FindItemResult obby = InvUtils.findInHotbar(Items.OBSIDIAN);
-        if (!obby.found()) return;
+        if (mc.player.getEyePos().squaredDistanceTo(vec) > targetRange.get() * targetRange.get()) return; // cheap distance
 
         if (cooldown > 0) {
             cooldown--;
             return;
         }
 
+        FindItemResult obby = InvUtils.findInHotbar(Items.OBSIDIAN);
+        if (!obby.found()) return;
         if (onlyWhenSelfInHole.get() && !PlayerUtils.isInHole(true)) return;
 
-        findPlacePositions();
+        placePositions.clear();
+        addPlacePositions(mc.world, BlockPos.ofFloored(vec), targetBox, mc.player.getEyePos());
 
-        if (placePositions.isEmpty()) return;
+        if (!placePositions.isEmpty())
+            handlePlaceLogic(obby, true); // instant -> true
+    }
 
+    @EventHandler
+    private void onTickPre(TickEvent.Pre event) {
+        if (mc.player == null || mc.world == null) return;
+
+        if (cooldown > 0) {
+            cooldown--;
+            return;
+        }
+
+        FindItemResult obby = InvUtils.findInHotbar(Items.OBSIDIAN);
+        if (!obby.found()) return;
+        if (onlyWhenSelfInHole.get() && !PlayerUtils.isInHole(true)) return;
+
+        Iterator<Vec3d> iterator = chorusPositions.iterator();
+
+        while (iterator.hasNext()) {
+            Vec3d vec = iterator.next();
+
+            Box targetBox = getBox(vec);
+            BlockPos feetPos = BlockPos.ofFloored(vec);
+
+            boolean intersects = !mc.world.getEntitiesByClass(LivingEntity.class, targetBox, (entity) -> true).isEmpty();
+            if (intersects) {
+                iterator.remove();
+                continue;
+            }
+
+            // already filled
+            if (!mc.world.getBlockState(feetPos.up()).isReplaceable()) {
+                iterator.remove();
+                continue;
+            }
+
+            if (mc.player.getEyePos().squaredDistanceTo(vec) > targetRange.get() * targetRange.get()) continue; // cheap distance check
+
+            addPlacePositions(mc.world, feetPos, targetBox, mc.player.getEyePos());
+        }
+
+        if (!placePositions.isEmpty())
+            handlePlaceLogic(obby, false);
+    }
+
+    private void handlePlaceLogic(FindItemResult obby, boolean ignoreBpt) {
         int placed = 0;
 
         for (BlockPos blockPos : placePositions) {
-            if (placed >= blocksPerTick.get() || obby.count() - placed <= 0) break;
+            if (obby.count() - placed <= 0) break;
+            if (!ignoreBpt && placed >= blocksPerTick.get()) break;
 
             boolean didPlace = TarBlockUtils.place(blockPos, false, true, Blocks.OBSIDIAN, (blockHitResult) -> {
                 double yaw = Rotations.getYaw(blockHitResult.getPos());
@@ -208,80 +232,68 @@ public class ChorusTrap extends TarModule {
         InvUtils.swapBack();
     }
 
-    public void findPlacePositions() {
-        for (Vec3d vec3d : nonFilledChorusPositions) {
-            BlockPos head = BlockPos.ofFloored(vec3d.add(0,1,0));
-            findPlacePositions(head);
-        }
-    }
+    private void addPlacePositions(WorldView world, BlockPos feetPos, Box excludeBox, Vec3d selfPosition) {
+        for (Direction dir : Direction.Type.HORIZONTAL) {
+            BlockPos offsetPos = feetPos.offset(dir);
 
-    public void findPlacePositions(BlockPos target) {
-        if (mc.player == null || mc.world == null) return;
+            if (excludeBox.intersects(new Box(offsetPos))) {
+                continue;
+            }
 
-        double maxRangeSq = range.get() * range.get();
+            if (world.getBlockState(offsetPos).isReplaceable()) {
+                if (!BlockUtils.canPlace(offsetPos)) continue;
+                if (selfPosition.squaredDistanceTo(offsetPos.toCenterPos()) > range.get() * range.get()) continue;
+            }
 
-        // something already placed/cant place at all, don't support
-        if (!BlockUtils.canPlace(target)) return;
+            BlockPos offsetDown = offsetPos.down();
+            if (world.getBlockState(offsetDown).isReplaceable()) {
+                if (!BlockUtils.canPlace(offsetDown)) continue;
+                if (selfPosition.squaredDistanceTo(offsetDown.toCenterPos()) > range.get() * range.get()) continue;
+                if (BlockUtils.getClosestPlaceSide(offsetDown) == null) continue;
+            }
 
-        if (isValidPlacePosition(target)) {
-            placePositions.add(target);
+            BlockPos pos2 = offsetPos.up();
+            if (world.getBlockState(pos2).isReplaceable()) {
+                if (!BlockUtils.canPlace(pos2)) continue;
+                if (selfPosition.squaredDistanceTo(pos2.toCenterPos()) > range.get() * range.get()) continue;
+            }
+
+            BlockPos pos3 = feetPos.up();
+            if (world.getBlockState(pos3).isReplaceable()) {
+                if (!BlockUtils.canPlace(pos3)) continue;
+                if (selfPosition.squaredDistanceTo(pos3.toCenterPos()) > range.get() * range.get()) continue;
+            }
+
+            placePositions.add(offsetPos);
+            placePositions.add(pos2);
+            placePositions.add(pos3);
             return;
         }
-
-        Queue<BlockPos> queue = new ArrayDeque<>();
-        Map<BlockPos, BlockPos> parent = new HashMap<>();
-        Set<BlockPos> visited = new HashSet<>();
-
-        queue.add(target);
-        visited.add(target);
-        if (avoidFeet.get()) visited.add(target.down());
-        parent.put(target, null);
-
-        while (!queue.isEmpty()) {
-            BlockPos pos = queue.poll();
-
-            if (mc.player.squaredDistanceTo(pos.toCenterPos()) > maxRangeSq) {
-                continue;
-            }
-
-            if (isValidPlacePosition(pos)) {
-                List<BlockPos> path = new ArrayList<>();
-                BlockPos current = pos;
-                while (current != null) {
-                    path.add(current);
-                    current = parent.get(current);
-                }
-                placePositions.addAll(path);
-                return;
-            }
-
-            if (Math.abs(pos.getX() - target.getX()) +
-                Math.abs(pos.getY() - target.getY()) +
-                Math.abs(pos.getZ() - target.getZ()) >= maxDepth.get()) {
-                continue;
-            }
-
-            for (Direction dir : Direction.values()) {
-                BlockPos neighbor = pos.offset(dir);
-                if (visited.contains(neighbor)) continue;
-
-                if (!BlockUtils.canPlace(neighbor)) continue;
-
-                visited.add(neighbor);
-                parent.put(neighbor, pos);
-                queue.add(neighbor);
-            }
-        }
     }
 
-    private boolean isValidPlacePosition(BlockPos pos) {
-        if (mc.player == null) return false;
+    private Box lastTickBB(PlayerEntity entity) {
+        Box currentBox = entity.getBoundingBox();
+        double width = currentBox.getLengthX();
+        double height = currentBox.getLengthY();
+        double depth = currentBox.getLengthZ();
 
-        Direction placeSide = BlockUtils.getClosestPlaceSide(pos);
-        if (placeSide == null) return false;
+        double centerX = entity.lastX;
+        double centerY = entity.lastY;
+        double centerZ = entity.lastZ;
 
-        if (mc.player.squaredDistanceTo(pos.toCenterPos()) > range.get() * range.get()) return false;
-        return BlockUtils.canPlace(pos);
+        return Box.of(new Vec3d(centerX, centerY, centerZ), width, height, depth);
+    }
+
+    private Box getBox(Vec3d vec) {
+        double min_x = vec.x - 0.6 / 2;
+        double max_x = vec.x + 0.6 / 2;
+
+        double max_y = vec.y + 1.6;
+
+        double min_z = vec.z - 0.6 / 2;
+        double max_z = vec.z + 0.6 / 2;
+
+        return new Box(min_x, vec.y, min_z, max_x, max_y, max_z);
     }
 
     @EventHandler

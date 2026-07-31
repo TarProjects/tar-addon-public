@@ -11,6 +11,7 @@ import net.minecraft.screen.PlayerScreenHandler;
 import net.minecraft.screen.ScreenHandler;
 import net.minecraft.screen.slot.Slot;
 import net.minecraft.screen.slot.SlotActionType;
+import org.objectweb.asm.Opcodes;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -78,19 +79,23 @@ public class HandledScreenMixin<T extends ScreenHandler> {
         );
     }
 
-    @Redirect(method = "drawMouseoverTooltip", at = @At(value = "INVOKE", target = "Lnet/minecraft/screen/slot/Slot;getStack()Lnet/minecraft/item/ItemStack;"))
-    private ItemStack onDrawMouseOverToolTip$getStack(Slot instance) {
-        if (!((Object) this instanceof InventoryScreen)) return instance.getStack();
-        if (!(instance.inventory instanceof PlayerInventory inventory)) return instance.getStack();
+    @Redirect(method = "drawMouseoverTooltip", at = @At(value = "FIELD", target = "Lnet/minecraft/client/gui/screen/ingame/HandledScreen;focusedSlot:Lnet/minecraft/screen/slot/Slot;", opcode = Opcodes.GETFIELD))
+    private Slot redirectFocusedSlot(HandledScreen<?> screen) {
+        Slot original = ((HandledScreenAccessor) screen).getFocusedSlot();
+        // dont check null objects for anything, outside of screen scope
+        if (original == null) return null;
+
+        if (!((Object) this instanceof InventoryScreen)) return original;
+        if (!(original.inventory instanceof PlayerInventory)) return original;
 
         VirtualHotbar virtualHotbar = Modules.get().get(VirtualHotbar.class);
         if (virtualHotbar != null && virtualHotbar.isActive()) {
-            if (instance.id >= 36 && instance.id < 45) {
-                int realSlot = instance.id - 36;
-                return VirtualHotbarUtils.getVisualStack(inventory, realSlot);
+            if (original.id >= 36 && original.id < 45) {
+                int virtual = VirtualHotbarUtils.realToVisual(original.id - 36);
+                return screen.getScreenHandler().getSlot(virtual + 36);
             }
         }
 
-        return instance.getStack();
+        return original;
     }
 }

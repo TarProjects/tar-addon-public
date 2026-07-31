@@ -10,7 +10,7 @@ public final class VirtualHotbarUtils {
     public static final int[] VISUAL_TO_REAL = new int[9];
     public static final int[] REAL_TO_VISUAL = new int[9];
 
-    public static int virtualSelectedSlot = 0;
+    public static volatile int virtualSelectedSlot = 0;
 
     public static void reset() {
         for (int i = 0; i < 9; i++) {

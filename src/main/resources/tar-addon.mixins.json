@@ -12,14 +12,13 @@
     "ItemStackMixin",
     "LivingEntityAccessor",
     "LivingEntityMixin",
-    "PlayerInventoryAccessor",
+    "PlayerInventoryMixin",
     "RotationsMixin"
   ],
   "client": [
     "CameraMixin",
     "ChatScreenMixin",
     "ClientPlayerInteractionManagerMixin",
-    "ClientPlayNetworkHandlerMixin",
     "ElementMixin",
     "EntityRenderManagerMixin",
     "HandledScreenAccessor",

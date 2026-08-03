@@ -1,12 +1,13 @@
 package org.tarclient.addon.modules;
 
 import meteordevelopment.meteorclient.events.packets.PacketEvent;
+import meteordevelopment.meteorclient.events.render.Render3DEvent;
 import meteordevelopment.meteorclient.events.world.TickEvent;
-import meteordevelopment.meteorclient.settings.DoubleSetting;
-import meteordevelopment.meteorclient.settings.IntSetting;
-import meteordevelopment.meteorclient.settings.Setting;
-import meteordevelopment.meteorclient.settings.SettingGroup;
+import meteordevelopment.meteorclient.renderer.ShapeMode;
+import meteordevelopment.meteorclient.settings.*;
 import meteordevelopment.meteorclient.utils.player.PlayerUtils;
+import meteordevelopment.meteorclient.utils.render.color.Color;
+import meteordevelopment.meteorclient.utils.render.color.SettingColor;
 import meteordevelopment.orbit.EventHandler;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.PlayerEntity;
@@ -26,6 +27,7 @@ import java.util.List;
  */
 public class CrystalWaster extends TarModule {
     private final SettingGroup sgGeneral = this.settings.getDefaultGroup();
+    private final SettingGroup sgRender = settings.createGroup("Render");
 
     private final Setting<Integer> delay = sgGeneral.add(new IntSetting.Builder()
         .name("delay")
@@ -43,11 +45,56 @@ public class CrystalWaster extends TarModule {
         .build()
     );
 
+    /* --- Render --- */
+    private final Setting<Boolean> render = sgRender.add(new BoolSetting.Builder()
+        .name("render")
+        .description("Should we render the box?")
+        .defaultValue(false)
+        .build()
+    );
+
+    private final Setting<ShapeMode> shapeMode = sgRender.add(new EnumSetting.Builder<ShapeMode>()
+        .name("shape-mode")
+        .description("How the shapes are rendered.")
+        .defaultValue(ShapeMode.Both)
+        .visible(render::get)
+        .build()
+    );
+
+    private final Setting<SettingColor> safeSideColor = sgRender.add(new ColorSetting.Builder()
+        .name("safe-side-color")
+        .defaultValue(new SettingColor(255, 0, 0, 70))
+        .visible(render::get)
+        .build()
+    );
+
+    private final Setting<SettingColor> safeLineColor = sgRender.add(new ColorSetting.Builder()
+        .name("safe-line-color")
+        .defaultValue(new SettingColor(255, 0, 0))
+        .visible(render::get)
+        .build()
+    );
+
+    private final Setting<SettingColor> unsafeSideColor = sgRender.add(new ColorSetting.Builder()
+        .name("unsafe-side-color")
+        .defaultValue(new SettingColor(255, 0, 0, 70))
+        .visible(render::get)
+        .build()
+    );
+
+    private final Setting<SettingColor> unsafeLineColor = sgRender.add(new ColorSetting.Builder()
+        .name("unsafe-line-color")
+        .defaultValue(new SettingColor(255, 0, 0))
+        .visible(render::get)
+        .build()
+    );
+
+
     Vec3d spoofedPosition = null;
     Stage stage = Stage.Wait;
     int stageTicks = 0;
 
-    double startY;
+    Box renderBox;
 
     public CrystalWaster() {
         super(TarAddon.CATEGORY, "crystal-waster", "Wastes opponents crystals. Disables on vertical move");
@@ -61,7 +108,7 @@ public class CrystalWaster extends TarModule {
         stage = Stage.Wait;
         stageTicks = 0;
 
-        startY = mc.player.getY();
+        renderBox = mc.player.getBoundingBox();
     }
 
     @Override
@@ -75,19 +122,25 @@ public class CrystalWaster extends TarModule {
     private void onTickPre(TickEvent.Pre event) {
         if (mc.player == null || mc.world == null) return;
 
-        if (Math.abs(mc.player.getY() - startY) > 1e-5) {
-            // moved up/down by 1e-5, toggle
-            error("Disabled due to vertical movement");
-            this.toggle();
-            return;
-        }
+        if (Math.abs(mc.player.getY() - mc.player.lastY) > 1e-5) {
+            // vertical
+            spoofedPosition = null;
 
-        if ((PlayerUtils.isMoving() || !mc.player.isOnGround()) && stage == Stage.Wait) {
+            sendRotatePacket(mc.player.getYaw(), mc.player.getPitch(), RotationPacket.Full);
+            renderBox = mc.player.getBoundingBox();
+
+            stage = Stage.Wait;
+            stageTicks = 0;
             return;
         }
 
         switch (stage) {
             case Wait -> {
+                renderBox = mc.player.getBoundingBox();
+                if (PlayerUtils.isMoving() || !mc.player.isOnGround()) {
+                    return;
+                }
+
                 stageTicks++;
 
                 if (stageTicks >= delay.get()) {
@@ -101,6 +154,7 @@ public class CrystalWaster extends TarModule {
                 if (clipPos == null) {
                     stage = Stage.Wait;
                     stageTicks = 0;
+                    renderBox = mc.player.getBoundingBox();
                     return;
                 }
 
@@ -109,6 +163,11 @@ public class CrystalWaster extends TarModule {
                 // sends move packet to sync if player is not moving... (then only on-ground will be sent every 20 ticks)
                 sendRotatePacket(mc.player.getYaw(), mc.player.getPitch(), RotationPacket.Full);
 
+                // move render box into clip position
+                // we could also create a new box by using width height and depth on
+                // a 3d vec as the center
+                renderBox = mc.player.getBoundingBox().offset(clipPos.subtract(mc.player.getEntityPos()));
+
                 stage = Stage.Down;
                 stageTicks = 0;
             }
@@ -116,11 +175,23 @@ public class CrystalWaster extends TarModule {
                 spoofedPosition = null;
 
                 sendRotatePacket(mc.player.getYaw(), mc.player.getPitch(), RotationPacket.Full);
+                // set rendering back
+                renderBox = mc.player.getBoundingBox();
 
                 stage = Stage.Wait;
                 stageTicks = 0;
             }
         }
+    }
+
+    @EventHandler
+    private void onRender(Render3DEvent event) {
+        if (!render.get() || renderBox == null) return;
+        boolean isWasting = spoofedPosition != null;
+        Color side = isWasting ? unsafeSideColor.get() : safeSideColor.get();
+        Color line = isWasting ? unsafeLineColor.get() : safeLineColor.get();
+
+        event.renderer.box(renderBox, side, line, shapeMode.get(), 0);
     }
 
     @EventHandler

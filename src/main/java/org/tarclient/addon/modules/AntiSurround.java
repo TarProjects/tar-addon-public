@@ -121,7 +121,7 @@ public class AntiSurround extends TarModule {
     private final Setting<List<Block>> replaceBlocks = sgReplace.add(new BlockListSetting.Builder()
         .name("blocks")
         .description("Primary blocks to use")
-        .defaultValue(Blocks.ANVIL, Blocks.CHIPPED_ANVIL, Blocks.DAMAGED_ANVIL)
+        .defaultValue(Blocks.ANVIL)
         .visible(replace::get)
         .build()
     );

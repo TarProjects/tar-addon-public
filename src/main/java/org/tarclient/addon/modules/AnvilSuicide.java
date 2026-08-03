@@ -295,12 +295,7 @@ public class AnvilSuicide extends TarModule {
     }
 
     private FindItemResult findAnvil() {
-        return InvUtils.findInHotbar(itemStack -> {
-            if (itemStack.getItem() instanceof BlockItem blockItem) {
-                return blockItem.getBlock() instanceof AnvilBlock;
-            }
-            return false;
-        });
+        return InvUtils.findInHotbar(Items.ANVIL);
     }
 
     private void attack(Entity entity) {

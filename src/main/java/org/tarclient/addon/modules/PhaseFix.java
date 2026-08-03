@@ -24,7 +24,6 @@ import static org.tarclient.addon.utils.MioUtils.toggleModule;
 public class PhaseFix extends TarModule {
     private final SettingGroup sgGeneral = this.settings.getDefaultGroup();
 
-
     private final Setting<Boolean> onGround = sgGeneral.add(new BoolSetting.Builder()
         .name("on-ground")
         .description("Spoofs on-ground value. Set this to whichever you want the onground value to be.")

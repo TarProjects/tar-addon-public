@@ -36,7 +36,6 @@ public class HeadBurrow extends TarModule {
     private final SettingGroup sgPre = this.settings.createGroup("Pre");
     private final SettingGroup sgPost = this.settings.createGroup("Post");
 
-
     private final Setting<Integer> moveDelay = sgGeneral.add(new IntSetting.Builder()
         .name("move-delay")
         .description("How long to allow movement")
@@ -70,7 +69,6 @@ public class HeadBurrow extends TarModule {
         .sliderRange(0, 100)
         .build()
     );
-
 
     private final List<Packet<?>> packets = new ArrayList<>();
     Stage stage = Stage.SYNC;

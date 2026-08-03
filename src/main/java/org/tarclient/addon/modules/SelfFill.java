@@ -36,14 +36,13 @@ import static org.tarclient.addon.utils.BurrowUtils.checkHead;
 import static org.tarclient.addon.utils.BurrowUtils.getCeiledBlockPos;
 
 public class SelfFill extends TarModule {
-    private final static double gravity = 0.98;
-    private final static double minus = 0.08;
-
     private final SettingGroup sgGeneral = this.settings.getDefaultGroup();
     private final SettingGroup sgAttack = this.settings.createGroup("Attack");
     private final SettingGroup sgBypass = this.settings.createGroup("Bypass");
     private final SettingGroup sgBlocks = this.settings.createGroup("Blocks");
 
+    private final static double gravity = 0.98;
+    private final static double minus = 0.08;
 
     private final Setting<Boolean> autoDisable = sgGeneral.add(new BoolSetting.Builder()
         .name("auto-disable")

@@ -251,7 +251,6 @@ public class SpectatorInterfere extends TarModule {
         return false;
     }
 
-
     private enum Stage {
         Spectator,
         WaitAndSwitchForSurvival,

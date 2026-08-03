@@ -28,7 +28,6 @@ public class RegearBot extends TarModule {
     private final SettingGroup sgGeneral = this.settings.getDefaultGroup();
     private final SettingGroup sgConfig = this.settings.createGroup("Config");
 
-
     private final Setting<List<String>> usernames = sgGeneral.add(new StringListSetting.Builder()
         .name("usernames")
         .description("Authorized users")

@@ -62,6 +62,7 @@ public class CrawlESP extends TarModule {
         .defaultValue(true)
         .build()
     );
+
     private final Setting<Boolean> ignoreAbove = sgGeneral.add(new BoolSetting.Builder()
         .name("ignore-above")
         .description("Ignores rendering the hole if it is above the player's Y level")

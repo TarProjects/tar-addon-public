@@ -37,6 +37,7 @@ public class DropKit extends TarModule {
         .defaultValue(SortPriority.LowestDistance)
         .build()
     );
+
     Stage stage;
     int counter;
     private PlayerEntity target;
@@ -44,7 +45,6 @@ public class DropKit extends TarModule {
     public DropKit() {
         super(TarAddon.CATEGORY, "drop-kit", "Utility tool that drops your entire inventory step by step");
     }
-
 
     @Override
     public void onActivate() {
@@ -62,7 +62,6 @@ public class DropKit extends TarModule {
         counter = 0;
         stage = Stage.DropArmor;
     }
-
 
     @EventHandler
     private void onTick(TickEvent.Pre event) {

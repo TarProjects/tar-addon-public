@@ -38,15 +38,15 @@ public final class VirtualHotbarUtils {
         return REAL_TO_VISUAL[realSlot];
     }
 
-    /*
-     * stack used for hotbar rendering
+    /**
+     * Get stack used for rendering the hotbar with visual slot id
      */
     public static ItemStack getVisualStack(PlayerInventory inventory, int visualSlot) {
         return inventory.getStack(VISUAL_TO_REAL[visualSlot]);
     }
 
-    /*
-     * called when user scrolls or presses number key
+    /**
+     * Called when user scrolls or presses number key
      */
     public static void select(int visualSlot) {
         if (visualSlot < 0 || visualSlot > 8) return;

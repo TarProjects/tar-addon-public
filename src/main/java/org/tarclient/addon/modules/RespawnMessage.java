@@ -15,7 +15,6 @@ import org.tarclient.addon.TarModule;
 public class RespawnMessage extends TarModule {
     private final SettingGroup sgGeneral = this.settings.getDefaultGroup();
 
-
     private final Setting<String> message = sgGeneral.add(new StringSetting.Builder()
         .name("message")
         .description("Message to send")
@@ -30,6 +29,7 @@ public class RespawnMessage extends TarModule {
         .sliderRange(0, 20)
         .build()
     );
+
     int counter = 0;
     boolean active = false;
 

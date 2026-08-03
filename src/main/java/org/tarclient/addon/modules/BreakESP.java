@@ -34,7 +34,7 @@ public class BreakESP extends TarModule {
     private final Setting<Animation> animation = sgRender.add(new EnumSetting.Builder<Animation>()
         .name("animation")
         .description("What animation to use on render")
-        .defaultValue(Animation.Static)
+        .defaultValue(Animation.Grow)
         .build()
     );
 

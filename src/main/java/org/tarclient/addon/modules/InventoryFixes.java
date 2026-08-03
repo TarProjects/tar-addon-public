@@ -23,11 +23,8 @@ import java.util.List;
 
 public class InventoryFixes extends TarModule {
     private final SettingGroup sgGeneral = this.settings.getDefaultGroup();
-    private final static Item SQUASH_ITEM = Items.STRUCTURE_VOID;
-    private final static Item GENERIC_ITEM = Items.AIR;
+    private final SettingGroup sgLoot = this.settings.createGroup("Loot Management");
 
-    /* --- Loot Management --- */
-    private final static int OFFHAND_INDEX = 45;
     // see ArmorSlotMixin
     public final Setting<Boolean> insertSlot = sgGeneral.add(new BoolSetting.Builder()
         .name("bypass-insert-slot")
@@ -35,7 +32,8 @@ public class InventoryFixes extends TarModule {
         .defaultValue(true)
         .build()
     );
-    private final SettingGroup sgLoot = this.settings.createGroup("Loot Management");
+
+    /* --- Loot Management --- */
     public final Setting<Boolean> lootEnabled = sgLoot.add(new BoolSetting.Builder()
         .name("enabled")
         .description("Use loot management features")
@@ -94,6 +92,12 @@ public class InventoryFixes extends TarModule {
         .defaultValue(List.of(Items.TOTEM_OF_UNDYING))
         .build()
     );
+
+    private final static Item SQUASH_ITEM = Items.STRUCTURE_VOID;
+    private final static Item GENERIC_ITEM = Items.AIR;
+
+    private final static int OFFHAND_INDEX = 45;
+
     Item lastPressed = null; // hear me out this is good
     List<Slot> painted = new ArrayList<>();
     Slot source = null;

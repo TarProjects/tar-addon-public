@@ -22,6 +22,7 @@ public class SpectatorCamera extends TarModule {
         .sliderRange(0, 5)
         .build()
     );
+
     private boolean upPressed, downPressed;
     private double offset = 0;
     private double prevOffset = 0;

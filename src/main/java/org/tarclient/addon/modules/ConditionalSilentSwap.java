@@ -23,7 +23,7 @@ public class ConditionalSilentSwap extends TarModule {
     private final Setting<List<String>> switchToOtherCommands = sgGeneral.add(new StringListSetting.Builder()
         .name("switch-to-other-commands")
         .description("Commands to run when switching to other items")
-        .defaultValue("autocrystal autoswap silent", "autocrystal PlaceDelay 125")
+        .defaultValue("autocrystal autoswap silent", "autocrystal PlaceDelay 175")
         .build()
     );
 

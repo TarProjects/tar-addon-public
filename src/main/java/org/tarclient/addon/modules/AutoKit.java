@@ -33,7 +33,7 @@ public class AutoKit extends TarModule {
     private final Setting<String> worldName = sgGeneral.add(new StringSetting.Builder()
         .name("world-name")
         .description("Which world should we /kit in")
-        .defaultValue("kit")
+        .defaultValue("overworld")
         .build()
     );
 
@@ -131,6 +131,8 @@ public class AutoKit extends TarModule {
                         }
                     }
                 }
+                stage = Stage.Wait;
+                ticks = -1;
             }
         }
     }

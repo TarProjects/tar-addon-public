@@ -1,9 +1,6 @@
 package org.tarclient.addon.modules;
 
-import meteordevelopment.meteorclient.settings.BoolSetting;
-import meteordevelopment.meteorclient.settings.EnumSetting;
-import meteordevelopment.meteorclient.settings.Setting;
-import meteordevelopment.meteorclient.settings.SettingGroup;
+import meteordevelopment.meteorclient.settings.*;
 import org.tarclient.addon.TarAddon;
 import org.tarclient.addon.TarModule;
 
@@ -13,6 +10,22 @@ public class NoLerp extends TarModule {
     public final Setting<Boolean> self = sgGeneral.add(new BoolSetting.Builder()
         .name("self")
         .defaultValue(false)
+        .build()
+    );
+
+    public final Setting<Boolean> checkDistanceMoved = sgGeneral.add(new BoolSetting.Builder()
+        .name("check-distance-moved")
+        .description("Only triggers when specific distance moved")
+        .defaultValue(false)
+        .build()
+    );
+
+    public final Setting<Double> distanceToMove = sgGeneral.add(new DoubleSetting.Builder()
+        .name("distance-to-move")
+        .description("Distance to move before not lerping")
+        .defaultValue(5)
+        .sliderRange(0, 10)
+        .visible(checkDistanceMoved::get)
         .build()
     );
 

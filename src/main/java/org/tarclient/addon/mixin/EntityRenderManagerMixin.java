@@ -24,6 +24,8 @@ public class EntityRenderManagerMixin {
         NoLerp noLerp = Modules.get().get(NoLerp.class);
         if (noLerp == null || !noLerp.isActive()) return instance.getAndUpdateRenderState(entity, tickProgress);
         if (entity == mc.player && !noLerp.self.get()) return instance.getAndUpdateRenderState(entity, tickProgress);
+        if (noLerp.checkDistanceMoved.get() && entity.getEntityPos().squaredDistanceTo(entity.lastX, entity.lastY, entity.lastZ) < noLerp.distanceToMove.get() * noLerp.distanceToMove.get()) return instance.getAndUpdateRenderState(entity, tickProgress);
+
         tickProgress = switch (noLerp.lerpMode.get()) {
             case Normal -> tickProgress;
             case Fast -> (float) Math.pow(tickProgress, 0.2);

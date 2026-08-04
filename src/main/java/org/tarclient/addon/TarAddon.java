@@ -106,6 +106,7 @@ public class TarAddon extends MeteorAddon {
         Modules.get().add(new RegearBot());
         Modules.get().add(new RespawnMessage());
         Modules.get().add(new SelfFill());
+        Modules.get().add(new SlowExp());
         Modules.get().add(new SpectatorCamera());
         Modules.get().add(new SpectatorInterfere());
         Modules.get().add(new TestFly());

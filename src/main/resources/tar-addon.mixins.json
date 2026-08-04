@@ -8,15 +8,18 @@
   "mixins": [
     "AbstractBlockStateMixin",
     "ArmorSlotMixin",
+    "EntityMixin",
     "GuiThemesMixin",
     "ItemStackMixin",
     "LivingEntityAccessor",
     "LivingEntityMixin",
     "PlayerInventoryMixin",
-    "RotationsMixin"
+    "RotationsMixin",
+    "ToggleCommandMixin"
   ],
   "client": [
     "CameraMixin",
+    "ClientPlayNetworkHandlerFixMixin",
     "ChatScreenMixin",
     "ClientPlayerInteractionManagerMixin",
     "ElementMixin",

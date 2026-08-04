@@ -123,6 +123,13 @@ public class MioCompatibility extends TarModule {
         .build()
     );
 
+    public final Setting<Boolean> expensiveRotationCaller = sgGeneral.add(new BoolSetting.Builder()
+        .name("expensive-rotation-caller")
+        .description("Checks the rotation caller to not break vanilla mc raytracing")
+        .defaultValue(false)
+        .build()
+    );
+
     private final SettingGroup sgFriends = this.settings.createGroup("Friends");
 
 

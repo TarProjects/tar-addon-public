@@ -3,6 +3,7 @@ package org.tarclient.addon.modules;
 import meteordevelopment.meteorclient.events.packets.PacketEvent;
 import meteordevelopment.meteorclient.events.render.Render3DEvent;
 import meteordevelopment.meteorclient.events.world.TickEvent;
+import meteordevelopment.meteorclient.mixininterface.IVec3d;
 import meteordevelopment.meteorclient.renderer.ShapeMode;
 import meteordevelopment.meteorclient.settings.*;
 import meteordevelopment.meteorclient.utils.player.PlayerUtils;
@@ -18,6 +19,7 @@ import net.minecraft.util.shape.VoxelShape;
 import net.minecraft.world.World;
 import org.tarclient.addon.TarAddon;
 import org.tarclient.addon.TarModule;
+import org.tarclient.addon.events.ModifyRotationCameraPosEvent;
 
 import java.util.List;
 
@@ -42,6 +44,13 @@ public class CrystalWaster extends TarModule {
         .description("Step height")
         .defaultValue(2)
         .sliderRange(0, 3)
+        .build()
+    );
+
+    private final Setting<Boolean> spoofRotation = sgRender.add(new BoolSetting.Builder()
+        .name("spoof-rotation")
+        .description("Spoofs rotations to be relative to the real position")
+        .defaultValue(true)
         .build()
     );
 
@@ -98,6 +107,14 @@ public class CrystalWaster extends TarModule {
 
     public CrystalWaster() {
         super(TarAddon.CATEGORY, "crystal-waster", "Wastes opponents crystals. Disables on vertical move");
+    }
+
+    @EventHandler
+    private void onModifyRotationCameraPos(ModifyRotationCameraPosEvent event) {
+        if (spoofedPosition != null && spoofRotation.get()) {
+            // spoofing, should spoof rot
+            ((IVec3d) event.pos).meteor$set(spoofedPosition);
+        }
     }
 
     @Override

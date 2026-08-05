@@ -181,6 +181,9 @@ public class IAmAFailure extends TarModule {
         if (ignoreSwap) return;
         if (globalCooldown > 0) return;
 
+        // are we on ground?
+        if (!mc.player.isOnGround()) return;
+
         BlockPos breakingPos = MiningUtils.getBreakingBlockPos();
 
         if (MiningUtils.getBreakingProgress() < progress.get()) return;

@@ -20,17 +20,9 @@ import org.tarclient.addon.TarModule;
 public class SlowExp extends TarModule {
     private final SettingGroup sgGeneral = this.settings.getDefaultGroup();
 
-    private final Setting<Integer> delay = sgGeneral.add(new IntSetting.Builder()
-        .name("delay")
-        .description("Delay between exp throws")
-        .defaultValue(2)
-        .sliderRange(0, 5)
-        .build()
-    );
-
     private final Setting<Integer> frequency = sgGeneral.add(new IntSetting.Builder()
         .name("frequency")
-        .description("Frequency of exp throwing")
+        .description("Frequency of exp throwing (at yourself, not counting waste)")
         .defaultValue(1)
         .sliderRange(1, 10)
         .build()
@@ -39,7 +31,7 @@ public class SlowExp extends TarModule {
     private final Setting<Integer> stopAt = sgGeneral.add(new IntSetting.Builder()
         .name("stop-at")
         .description("Stops at specific percentage. Set to 0 to disable")
-        .defaultValue(85)
+        .defaultValue(80)
         .sliderRange(0, 100)
         .build()
     );
@@ -48,13 +40,6 @@ public class SlowExp extends TarModule {
         .name("gui")
         .description("What to do on gui screen?")
         .defaultValue(GuiMode.None)
-        .build()
-    );
-
-    private final Setting<Boolean> checkOpponents = sgGeneral.add(new BoolSetting.Builder()
-        .name("check-opponents")
-        .description("Checks nearby opponents for contesting")
-        .defaultValue(true)
         .build()
     );
 
@@ -80,15 +65,15 @@ public class SlowExp extends TarModule {
         .build()
     );
 
-    private int cooldown;
+    private int tickCounter;
 
     public SlowExp() {
-        super(TarAddon.CATEGORY, "slow-exp", "Alternative autoexp, easily configurable to be slow");
+        super(TarAddon.CATEGORY, "slow-exp", "Alternative autoexp to get <= 88% of the xp in holes, without depending on player id");
     }
 
     @Override
     public void onActivate() {
-        cooldown = 0;
+        tickCounter = 0;
     }
 
     @EventHandler
@@ -102,36 +87,7 @@ public class SlowExp extends TarModule {
             return;
         }
 
-        if (!mc.player.isOnGround()) {
-            error("Not on ground, disabling!");
-            this.toggle();
-            return;
-        }
-
-        if (checkOpponents.get()) {
-            double size = boxSize.get();
-            Vec3d orbPos = mc.player.getEntityPos().add(0,size,0);
-            Box orbBox = new Box(
-                orbPos.x - size,
-                orbPos.y - size,
-                orbPos.z - size,
-                orbPos.x + size,
-                orbPos.y + size,
-                orbPos.z + size
-            );
-
-            for (PlayerEntity player : mc.world.getPlayers()) {
-                if (player.isSpectator() || player == mc.player) continue;
-
-                if (player.getBoundingBox().intersects(orbBox)) {
-                    if (player.getId() < mc.player.getId()) {
-                        error("Lower entity id able to pick up, disabling!");
-                        this.toggle();
-                        return;
-                    }
-                }
-            }
-        }
+        if (!mc.player.isOnGround()) return;
 
         if (!shouldMend(mc.player)) {
             info("Hit durability cap!");
@@ -152,10 +108,27 @@ public class SlowExp extends TarModule {
             }
         }
 
-        if (cooldown > 0) {
-            cooldown--;
+        int cycle = getCycle();
+        if (cycle < 0) return;
+        if (cycle > 2) {
+            // over 2 players, there is 0 way to get any xp for ourselves
+            error("Too many players colliding for xp!");
+            this.toggle();
             return;
         }
+
+        int normalizedCycle = modPositive((tickCounter - cycle), 3); // dunno how to explain this, just offset the tickcounter by our cycle with 1 tick wait
+        // this means that 0 -> our throw
+        if (normalizedCycle == 0) throwExp(result, true);
+        if (normalizedCycle == 1 && cycle == 2) throwExp(result, false); // scuffed ass coding due to the negative numbers by tickcounter - cycle
+        if (normalizedCycle == 2 && cycle >= 1) throwExp(result, false); // but this will just make it throw if there are more ppl in here
+
+
+        tickCounter++;
+    }
+
+    private void throwExp(FindItemResult result, boolean self) {
+        if (mc.player == null) return;
 
         if (packet.get()) {
             sendRotatePacket(mc.player.getYaw(), 90, RotationPacket.Full);
@@ -164,16 +137,16 @@ public class SlowExp extends TarModule {
         InvUtils.swap(result.slot(), true);
         int xpCount = mc.player.getInventory().getStack(result.slot()).getCount();
 
-        for (int i = 0; i < frequency.get(); i++) {
+        int toThrow = self ? frequency.get() : 1; // throw 1 for other ppl, freq for self
+
+        for (int i = 0; i < toThrow; i++) {
             if (xpCount - i <= 0) break;
             sendPacket(new PlayerInteractItemC2SPacket(result.getHand(), 0, mc.player.getYaw(), 90));
             if (swing.get()) {
                 mc.player.swingHand(result.getHand());
             }
         }
-
         InvUtils.swapBack();
-        cooldown = delay.get();
     }
 
     private boolean shouldMend(PlayerEntity player) {
@@ -193,6 +166,38 @@ public class SlowExp extends TarModule {
         }
 
         return false;
+    }
+
+    private int getCycle() {
+        if (mc.player == null || mc.world == null) return -1;
+        int cycle = 0; // by default 0, increase by 1 for every waste xp needed
+
+        double size = boxSize.get();
+        Vec3d orbPos = mc.player.getEntityPos().add(0,size,0);
+        Box orbBox = new Box(
+            orbPos.x - size,
+            orbPos.y - size,
+            orbPos.z - size,
+            orbPos.x + size,
+            orbPos.y + size,
+            orbPos.z + size
+        );
+
+        for (PlayerEntity player : mc.world.getPlayers()) {
+            if (player.isSpectator() || player == mc.player) continue;
+
+            if (player.getBoundingBox().intersects(orbBox)) {
+                if (player.getId() < mc.player.getId()) {
+                    cycle++;
+                }
+            }
+        }
+
+        return cycle;
+    }
+
+    private int modPositive(int a, int b) {
+        return (a % b + b) % b;
     }
 
     private enum GuiMode {

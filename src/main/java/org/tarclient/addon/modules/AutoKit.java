@@ -40,8 +40,8 @@ public class AutoKit extends TarModule {
     private final Setting<Integer> delay = sgGeneral.add(new IntSetting.Builder()
         .name("delay")
         .description("How much time to wait before respawn to kit")
-        .defaultValue(20)
-        .sliderRange(0, 20)
+        .defaultValue(50)
+        .sliderRange(0, 100)
         .build()
     );
 

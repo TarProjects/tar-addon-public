@@ -87,7 +87,10 @@ public class SlowExp extends TarModule {
             return;
         }
 
-        if (!mc.player.isOnGround()) return;
+        if (!mc.player.isOnGround()) {
+            reset();
+            return;
+        }
 
         if (!shouldMend(mc.player)) {
             info("Hit durability cap!");
@@ -99,6 +102,7 @@ public class SlowExp extends TarModule {
             // gui open
             switch (gui.get()) {
                 case Pause -> {
+                    reset();
                     return;
                 }
                 case Toggle -> {
@@ -194,6 +198,10 @@ public class SlowExp extends TarModule {
         }
 
         return cycle;
+    }
+
+    private void reset() {
+        tickCounter = 0;
     }
 
     private int modPositive(int a, int b) {

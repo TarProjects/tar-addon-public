@@ -5,6 +5,7 @@ import meteordevelopment.meteorclient.settings.*;
 import meteordevelopment.meteorclient.utils.Utils;
 import meteordevelopment.meteorclient.utils.player.FindItemResult;
 import meteordevelopment.meteorclient.utils.player.InvUtils;
+import meteordevelopment.meteorclient.utils.player.Rotations;
 import meteordevelopment.meteorclient.utils.player.SlotUtils;
 import meteordevelopment.orbit.EventHandler;
 import net.minecraft.enchantment.Enchantments;
@@ -20,10 +21,27 @@ import org.tarclient.addon.TarModule;
 public class SlowExp extends TarModule {
     private final SettingGroup sgGeneral = this.settings.getDefaultGroup();
 
+    private final Setting<Integer> delay = sgGeneral.add(new IntSetting.Builder()
+        .name("delay")
+        .description("Delay of xp when not buffering")
+        .defaultValue(0)
+        .sliderRange(0, 10)
+        .min(1)
+        .build()
+    );
+
     private final Setting<Integer> frequency = sgGeneral.add(new IntSetting.Builder()
         .name("frequency")
         .description("Frequency of exp throwing (at yourself, not counting waste)")
-        .defaultValue(1)
+        .defaultValue(4)
+        .sliderRange(1, 10)
+        .build()
+    );
+
+    private final Setting<Integer> bufferFrequency = sgGeneral.add(new IntSetting.Builder()
+        .name("buffer-frequency")
+        .description("How much should we freq when buffering? (delay is always 2 ticks)")
+        .defaultValue(8)
         .sliderRange(1, 10)
         .build()
     );
@@ -51,9 +69,23 @@ public class SlowExp extends TarModule {
         .build()
     );
 
-    private final Setting<Boolean> packet = sgGeneral.add(new BoolSetting.Builder()
-        .name("packet")
-        .description("Extra packet for rotation")
+    private final Setting<Rotation> rotate = sgGeneral.add(new EnumSetting.Builder<Rotation>()
+        .name("rotate")
+        .description("Rotations")
+        .defaultValue(Rotation.Normal)
+        .build()
+    );
+
+    private final Setting<Rotation> rotateBuffer = sgGeneral.add(new EnumSetting.Builder<Rotation>()
+        .name("rotate-buffer")
+        .description("How to rotate when buffering?")
+        .defaultValue(Rotation.Normal)
+        .build()
+    );
+
+    private final Setting<Boolean> bufferFallback = sgGeneral.add(new BoolSetting.Builder()
+        .name("buffer-fallback")
+        .description("Fallbacks to throwing without rots in dire need of xp")
         .defaultValue(true)
         .build()
     );
@@ -112,45 +144,65 @@ public class SlowExp extends TarModule {
             }
         }
 
-        int cycle = getCycle();
-        if (cycle < 0) return;
-        if (cycle > 2) {
+        State stage = getCycle();
+        if (stage == null) return;
+        if (stage.cycle > 2) {
             // over 2 players, there is 0 way to get any xp for ourselves
-            error("Too many players colliding for xp!");
-            this.toggle();
+            if (bufferFallback.get()) {
+                if (tickCounter % (delay.get() + 1) == 0) {
+                    // dont rot, rotation down = we arent gonna get any
+                    throwExp(result, frequency.get(), Rotation.None);
+                }
+                tickCounter++;
+            } else {
+                error("Too many players colliding for xp!");
+                this.toggle();
+            }
             return;
         }
 
-        int normalizedCycle = modPositive((tickCounter - cycle), 3); // dunno how to explain this, just offset the tickcounter by our cycle with 1 tick wait
-        // this means that 0 -> our throw
-        if (normalizedCycle == 0) throwExp(result, true);
-        if (normalizedCycle == 1 && cycle == 2) throwExp(result, false); // scuffed ass coding due to the negative numbers by tickcounter - cycle
-        if (normalizedCycle == 2 && cycle >= 1) throwExp(result, false); // but this will just make it throw if there are more ppl in here
-
+        if (stage.count == 0) {
+            // normal xp
+            if (tickCounter % (delay.get() + 1) == 0) {
+                // every n ticks throw
+                throwExp(result, frequency.get(), rotate.get());
+            }
+        } else {
+            int normalizedCycle = modPositive((tickCounter - stage.cycle), 3); // dunno how to explain this, just offset the tickcounter by our cycle with 1 tick wait
+            // this means that 0 -> our throw
+            if (normalizedCycle == 0) throwExp(result, bufferFrequency.get(), rotateBuffer.get());
+            if (normalizedCycle == 1 && stage.cycle == 2) throwExp(result, 1, rotateBuffer.get()); // scuffed ass coding due to the negative numbers by tickcounter - cycle
+            if (normalizedCycle == 2 && stage.cycle >= 1) throwExp(result, 1, rotateBuffer.get()); // but this will just make it throw if there are more ppl in here
+        }
 
         tickCounter++;
     }
 
-    private void throwExp(FindItemResult result, boolean self) {
+    private void throwExp(FindItemResult result, int amount, Rotation rotation) {
         if (mc.player == null) return;
 
-        if (packet.get()) {
-            sendRotatePacket(mc.player.getYaw(), 90, RotationPacket.Full);
-        }
+        Runnable runnable = () -> {
+            InvUtils.swap(result.slot(), true);
+            int xpCount = mc.player.getInventory().getStack(result.slot()).getCount();
 
-        InvUtils.swap(result.slot(), true);
-        int xpCount = mc.player.getInventory().getStack(result.slot()).getCount();
-
-        int toThrow = self ? frequency.get() : 1; // throw 1 for other ppl, freq for self
-
-        for (int i = 0; i < toThrow; i++) {
-            if (xpCount - i <= 0) break;
-            sendPacket(new PlayerInteractItemC2SPacket(result.getHand(), 0, mc.player.getYaw(), 90));
-            if (swing.get()) {
-                mc.player.swingHand(result.getHand());
+            for (int i = 0; i < amount; i++) {
+                if (xpCount - i <= 0) break;
+                sendPacket(new PlayerInteractItemC2SPacket(result.getHand(), 0, mc.player.getYaw(), 90));
+                if (swing.get()) {
+                    mc.player.swingHand(result.getHand());
+                }
             }
+            InvUtils.swapBack();
+        };
+
+        switch (rotation) {
+            case Normal -> Rotations.rotate(mc.player.getYaw(), 90, runnable);
+            case Silent -> {
+                sendRotatePacket(mc.player.getYaw(), 90, RotationPacket.Full);
+                runnable.run();
+            }
+            case None -> runnable.run();
         }
-        InvUtils.swapBack();
     }
 
     private boolean shouldMend(PlayerEntity player) {
@@ -172,9 +224,10 @@ public class SlowExp extends TarModule {
         return false;
     }
 
-    private int getCycle() {
-        if (mc.player == null || mc.world == null) return -1;
+    private State getCycle() {
+        if (mc.player == null || mc.world == null) return null;
         int cycle = 0; // by default 0, increase by 1 for every waste xp needed
+        int count = 0; // colliding players
 
         double size = boxSize.get();
         Vec3d orbPos = mc.player.getEntityPos().add(0,size,0);
@@ -191,19 +244,21 @@ public class SlowExp extends TarModule {
             if (player.isSpectator() || player == mc.player) continue;
 
             if (player.getBoundingBox().intersects(orbBox)) {
+                count++; // countttt
                 if (player.getId() < mc.player.getId()) {
                     cycle++;
                 }
             }
         }
 
-        return cycle;
+        return new State(cycle, count);
     }
 
     private void reset() {
         tickCounter = 0;
     }
 
+    @SuppressWarnings("SameParameterValue")
     private int modPositive(int a, int b) {
         return (a % b + b) % b;
     }
@@ -213,4 +268,12 @@ public class SlowExp extends TarModule {
         Toggle,
         Pause
     }
+
+    private enum Rotation {
+        Normal,
+        Silent,
+        None
+    }
+
+    private record State(int cycle, int count) {}
 }

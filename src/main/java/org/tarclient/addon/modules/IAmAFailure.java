@@ -74,6 +74,14 @@ public class IAmAFailure extends TarModule {
         .build()
     );
 
+    private final Setting<Integer> magic = sgGeneral.add(new IntSetting.Builder()
+        .name("magic")
+        .description("What kind of fruit is this?")
+        .defaultValue(5)
+        .sliderRange(0, 25)
+        .build()
+    );
+
     private final Setting<Integer> depth = sgGeneral.add(new IntSetting.Builder()
         .name("depth")
         .description("Depth of the larp")
@@ -348,7 +356,7 @@ public class IAmAFailure extends TarModule {
         BlockHitResult bhr = new BlockHitResult(mc.player.getBlockPos().toBottomCenterPos(), Direction.UP, mc.player.getBlockPos().down(), false);
 
         // magic v2
-        for (int i = 0; i < 25; i++) {
+        for (int i = 0; i < magic.get(); i++) {
             sendPacket(new PlayerInteractBlockC2SPacket(Hand.MAIN_HAND, bhr, 0));
         }
 

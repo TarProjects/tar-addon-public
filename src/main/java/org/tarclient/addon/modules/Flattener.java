@@ -18,6 +18,7 @@ import meteordevelopment.meteorclient.utils.render.color.Color;
 import meteordevelopment.meteorclient.utils.render.color.SettingColor;
 import meteordevelopment.meteorclient.utils.world.BlockUtils;
 import meteordevelopment.orbit.EventHandler;
+import net.minecraft.block.BlockState;
 import net.minecraft.block.Blocks;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.Items;
@@ -27,6 +28,9 @@ import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.GameMode;
 import org.tarclient.addon.TarAddon;
 import org.tarclient.addon.TarModule;
+import org.tarclient.addon.utils.HoleUtils;
+import org.tarclient.addon.utils.PredictUtils;
+import org.tarclient.addon.utils.SimulationState;
 import org.tarclient.addon.utils.TarBlockUtils;
 
 import java.util.*;
@@ -68,6 +72,21 @@ public class Flattener extends TarModule {
         .build()
     );
 
+    private final Setting<Boolean> assumeStep = sgGeneral.add(new BoolSetting.Builder()
+        .name("assume-step")
+        .description("Assumes step if player is NOT in hole")
+        .defaultValue(true)
+        .build()
+    );
+
+    private final Setting<Double> stepHeight = sgGeneral.add(new DoubleSetting.Builder()
+        .name("step-height")
+        .description("Max step height to extrapolate")
+        .defaultValue(2)
+        .sliderRange(0.5, 3)
+        .build()
+    );
+
     /* --- Conditions */
     private final Setting<Double> minHP = sgConditions.add(new DoubleSetting.Builder()
         .name("min-health")
@@ -106,7 +125,7 @@ public class Flattener extends TarModule {
         .name("predict")
         .description("How many ticks to predict")
         .defaultValue(6)
-        .sliderRange(0, 5)
+        .sliderRange(0, 10)
         .build()
     );
 
@@ -325,44 +344,50 @@ public class Flattener extends TarModule {
         return angleDeg <= thresholdDegrees;
     }
 
+    private final Map<BlockPos, BlockState> blocksToRestore = new HashMap<>();
+
     private void fetchPlacePositions() {
         if (mc.world == null) return;
+        blocksToRestore.clear();
+        Vec3d velocity = target.getEntityPos().subtract(target.lastX, target.lastY, target.lastZ);
+        SimulationState state = new SimulationState(target.getEntityPos(), velocity);
 
-        double deltaX = target.getX() - target.lastX;
-        double deltaZ = target.getZ() - target.lastZ;
+        boolean shouldStep = assumeStep.get() && !HoleUtils.isInHole(target.getBlockPos(), true);
 
-        double expand = Math.max(expandBox.get(), -0.2999);
+        try {
+            double expand = Math.max(expandBox.get(), -0.2999);
+            Box baseBox = target.getBoundingBox().expand(expand, 0, expand);
 
-        Box baseBox = target.getBoundingBox().expand(expand, 0, expand);
+            for (int i = 0; i < predict.get(); i++) {
+                PredictUtils.advanceOneTick(target, state, shouldStep ? stepHeight.get() : 0);
+                Box predictBox = baseBox.offset(state.pos.subtract(target.getEntityPos()));
 
-        int y = (int) Math.floor(target.getY()) - 1;
+                int minX = (int) Math.floor(predictBox.minX);
+                int maxX = (int) Math.floor(predictBox.maxX);
+                int minZ = (int) Math.floor(predictBox.minZ);
+                int maxZ = (int) Math.floor(predictBox.maxZ);
 
-        for (double i = 1; i <= predict.get(); i += 0.5) {
-            Vec3d offset = new Vec3d(deltaX * i, 0, deltaZ * i);
+                int y = (int) Math.floor(state.pos.getY()) - 1;
+                for (int x = minX; x <= maxX; x++) {
+                    for (int z = minZ; z <= maxZ; z++) {
+                        BlockPos pos = new BlockPos(x, y, z);
+                        BlockState blockState = mc.world.getBlockState(pos);
+                        if (!placePositions.contains(pos)) {
+                            placePositions.add(pos);
 
-            Box collisionCheckBox = target.getBoundingBox().offset(offset);
-            if (i > 0 && mc.world.canCollide(target, collisionCheckBox)) {
-                break;
-            }
-
-            Box predictedBox = baseBox.offset(offset);
-
-            int minX = (int) Math.floor(predictedBox.minX);
-            int maxX = (int) Math.floor(predictedBox.maxX);
-            int minZ = (int) Math.floor(predictedBox.minZ);
-            int maxZ = (int) Math.floor(predictedBox.maxZ);
-
-            for (int x = minX; x <= maxX; x++) {
-                for (int z = minZ; z <= maxZ; z++) {
-                    BlockPos pos = new BlockPos(x, y, z);
-
-                    if (!placePositions.contains(pos)) {
-                        placePositions.add(pos);
+                            blocksToRestore.put(pos, blockState);
+                            mc.world.setBlockState(pos, Blocks.OBSIDIAN.getDefaultState());
+                        }
                     }
                 }
             }
-        }
 
-        placePositions.sort(Comparator.comparingDouble(pos -> target.squaredDistanceTo(pos.toCenterPos())));
+            placePositions.sort(Comparator.comparingDouble(pos -> target.squaredDistanceTo(pos.toCenterPos())));
+        } finally {
+            for (BlockPos blockPos : blocksToRestore.keySet()) {
+                BlockState blockState = blocksToRestore.get(blockPos);
+                mc.world.setBlockState(blockPos, blockState);
+            }
+        }
     }
 }

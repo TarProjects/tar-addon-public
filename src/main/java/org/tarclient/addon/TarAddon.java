@@ -63,6 +63,7 @@ public class TarAddon extends MeteorAddon {
     // TODO: remove all Utils.canUpdate since events aren't called if player is null anyways.... stupid me
     @Override
     public void onInitialize() {
+        Modules.get().add(new AntiExp());
         Modules.get().add(new AntiGhostBlocks());
         Modules.get().add(new AntiPearl());
         Modules.get().add(new AntiSurround());
@@ -111,6 +112,7 @@ public class TarAddon extends MeteorAddon {
         Modules.get().add(new SpectatorCamera());
         Modules.get().add(new SpectatorInterfere());
         Modules.get().add(new TestFly());
+        Modules.get().add(new TickAligner());
         Modules.get().add(new TickShift());
         Modules.get().add(new FindUUID());
         Modules.get().add(new VirtualHotbar());

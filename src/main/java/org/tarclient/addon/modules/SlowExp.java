@@ -26,7 +26,7 @@ public class SlowExp extends TarModule {
         .description("Delay of xp when not buffering")
         .defaultValue(0)
         .sliderRange(0, 10)
-        .min(1)
+        .min(0)
         .build()
     );
 
@@ -35,6 +35,15 @@ public class SlowExp extends TarModule {
         .description("Frequency of exp throwing (at yourself, not counting waste)")
         .defaultValue(4)
         .sliderRange(1, 10)
+        .build()
+    );
+
+    private final Setting<Integer> bufferDelay = sgGeneral.add(new IntSetting.Builder()
+        .name("buffer-delay")
+        .description("Delay of buffered throws")
+        .defaultValue(0)
+        .sliderRange(0, 10)
+        .min(0)
         .build()
     );
 
@@ -90,10 +99,10 @@ public class SlowExp extends TarModule {
         .build()
     );
 
-    private final Setting<Boolean> swing = sgGeneral.add(new BoolSetting.Builder()
+    private final Setting<Swing> swing = sgGeneral.add(new EnumSetting.Builder<Swing>()
         .name("swing")
-        .description("Swing on item use")
-        .defaultValue(true)
+        .description("Swings hand depending on mode")
+        .defaultValue(Swing.All)
         .build()
     );
 
@@ -168,11 +177,13 @@ public class SlowExp extends TarModule {
                 throwExp(result, frequency.get(), rotate.get());
             }
         } else {
-            int normalizedCycle = modPositive((tickCounter - stage.cycle), 3); // dunno how to explain this, just offset the tickcounter by our cycle with 1 tick wait
-            // this means that 0 -> our throw
+            // goofy ahh math to do mod in order to loop consistently
+            int mod = 3 + bufferDelay.get();
+            int normalizedCycle = modPositive((tickCounter - stage.cycle), mod);
+
             if (normalizedCycle == 0) throwExp(result, bufferFrequency.get(), rotateBuffer.get());
-            if (normalizedCycle == 1 && stage.cycle == 2) throwExp(result, 1, rotateBuffer.get()); // scuffed ass coding due to the negative numbers by tickcounter - cycle
-            if (normalizedCycle == 2 && stage.cycle >= 1) throwExp(result, 1, rotateBuffer.get()); // but this will just make it throw if there are more ppl in here
+            if (normalizedCycle == mod - 2 && stage.cycle == 2) throwExp(result, 1, rotateBuffer.get());
+            if (normalizedCycle == mod - 1 && stage.cycle >= 1) throwExp(result, 1, rotateBuffer.get());
         }
 
         tickCounter++;
@@ -188,10 +199,14 @@ public class SlowExp extends TarModule {
             for (int i = 0; i < amount; i++) {
                 if (xpCount - i <= 0) break;
                 sendPacket(new PlayerInteractItemC2SPacket(result.getHand(), 0, mc.player.getYaw(), 90));
-                if (swing.get()) {
+                if (swing.get() == Swing.All)
                     mc.player.swingHand(result.getHand());
-                }
+
             }
+
+            if (swing.get() == Swing.Once)
+                mc.player.swingHand(result.getHand());
+
             InvUtils.swapBack();
         };
 
@@ -273,6 +288,12 @@ public class SlowExp extends TarModule {
         Normal,
         Silent,
         None
+    }
+
+    private enum Swing {
+        None,
+        All,
+        Once
     }
 
     private record State(int cycle, int count) {}

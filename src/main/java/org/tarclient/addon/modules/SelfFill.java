@@ -29,6 +29,7 @@ import net.minecraft.util.shape.VoxelShape;
 import org.tarclient.addon.TarAddon;
 import org.tarclient.addon.TarModule;
 import org.tarclient.addon.utils.BurrowUtils;
+import org.tarclient.addon.utils.PredictUtils;
 
 import java.util.List;
 
@@ -40,9 +41,6 @@ public class SelfFill extends TarModule {
     private final SettingGroup sgAttack = this.settings.createGroup("Attack");
     private final SettingGroup sgBypass = this.settings.createGroup("Bypass");
     private final SettingGroup sgBlocks = this.settings.createGroup("Blocks");
-
-    private final static double gravity = 0.98;
-    private final static double minus = 0.08;
 
     private final Setting<Boolean> autoDisable = sgGeneral.add(new BoolSetting.Builder()
         .name("auto-disable")
@@ -324,7 +322,7 @@ public class SelfFill extends TarModule {
         for (int i = 0; i < iterations; i++) {
             y = y + velocity;
             sendPacket(new PlayerMoveC2SPacket.Full(mc.player.getX(), mc.player.getY() + y, mc.player.getZ(), mc.player.getYaw(), 90, onGround.get(), mc.player.horizontalCollision));
-            velocity = (velocity - minus) * gravity;
+            velocity = (velocity - PredictUtils.GRAVITY) * PredictUtils.DRAG;
         }
 
         swap(slot);

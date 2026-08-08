@@ -8,6 +8,7 @@ import meteordevelopment.meteorclient.settings.*;
 import meteordevelopment.meteorclient.systems.friends.Friends;
 import meteordevelopment.meteorclient.utils.Utils;
 import meteordevelopment.meteorclient.utils.entity.DamageUtils;
+import meteordevelopment.meteorclient.utils.misc.Keybind;
 import meteordevelopment.meteorclient.utils.player.FindItemResult;
 import meteordevelopment.meteorclient.utils.player.InvUtils;
 import meteordevelopment.meteorclient.utils.player.Rotations;
@@ -41,6 +42,7 @@ import java.util.*;
 
 public class IAmAFailure extends TarModule {
     private final SettingGroup sgGeneral = this.settings.getDefaultGroup();
+    private final SettingGroup sgAuto = settings.createGroup("Auto");
     private final SettingGroup sgRender = settings.createGroup("Render");
 
     private final Setting<Boolean> larp = sgGeneral.add(new BoolSetting.Builder()
@@ -82,22 +84,6 @@ public class IAmAFailure extends TarModule {
         .build()
     );
 
-    private final Setting<Integer> depth = sgGeneral.add(new IntSetting.Builder()
-        .name("depth")
-        .description("Depth of the larp")
-        .defaultValue(3)
-        .sliderRange(0, 6)
-        .build()
-    );
-
-    private final Setting<Double> minDmg = sgGeneral.add(new DoubleSetting.Builder()
-        .name("min-dmg")
-        .description("Minimum damage to start the larp")
-        .defaultValue(5)
-        .sliderRange(0, 15)
-        .build()
-    );
-
     private final Setting<Boolean> swap = sgGeneral.add(new BoolSetting.Builder()
         .name("swap")
         .description("Swaps...")
@@ -105,6 +91,40 @@ public class IAmAFailure extends TarModule {
         .build()
     );
 
+    private final Setting<Keybind> holdBind = sgGeneral.add(new KeybindSetting.Builder()
+        .name("hold-bind")
+        .description("Activates larp on hold")
+        .defaultValue(Keybind.none())
+        .build()
+    );
+
+    /* --- Auto --- */
+    private final Setting<Boolean> auto = sgAuto.add(new BoolSetting.Builder()
+        .name("auto")
+        .description("Automatic activation")
+        .defaultValue(true)
+        .build()
+    );
+
+    private final Setting<Integer> depth = sgAuto.add(new IntSetting.Builder()
+        .name("depth")
+        .description("Depth of the larp")
+        .defaultValue(3)
+        .sliderRange(0, 6)
+        .visible(auto::get)
+        .build()
+    );
+
+    private final Setting<Double> minDmg = sgAuto.add(new DoubleSetting.Builder()
+        .name("min-dmg")
+        .description("Minimum damage to start the larp")
+        .defaultValue(5)
+        .sliderRange(0, 15)
+        .visible(auto::get)
+        .build()
+    );
+
+    /* --- Render --- */
     private final Setting<Double> fadeTime = sgRender.add(new DoubleSetting.Builder()
         .name("fade-time")
         .description("How many seconds should rendering take?")
@@ -215,7 +235,8 @@ public class IAmAFailure extends TarModule {
         if (state.isReplaceable()) return;
 
         mc.world.setBlockState(breakingPos, Blocks.AIR.getDefaultState());
-        if (hasPotential(breakingPos, state, minDmg.get(), depth.get())) {
+        boolean isPressing = holdBind.get().isPressed() && mc.currentScreen == null;
+        if (isPressing || (auto.get() && hasPotential(breakingPos, state, minDmg.get(), depth.get()))) {
             ssdfg_00000(breakingPos);
         }
         mc.world.setBlockState(breakingPos, state);

@@ -1,217 +1,73 @@
 package org.tarclient.addon.modules;
 
 import meteordevelopment.meteorclient.events.packets.PacketEvent;
-import meteordevelopment.meteorclient.events.world.TickEvent;
-import meteordevelopment.meteorclient.settings.IntSetting;
-import meteordevelopment.meteorclient.settings.Setting;
-import meteordevelopment.meteorclient.settings.SettingGroup;
-import meteordevelopment.meteorclient.utils.player.Rotations;
+import meteordevelopment.meteorclient.settings.*;
 import meteordevelopment.orbit.EventHandler;
-import net.minecraft.block.BlockState;
-import net.minecraft.block.Blocks;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.EntityType;
-import net.minecraft.entity.decoration.EndCrystalEntity;
+import net.minecraft.client.world.ClientWorld;
 import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.entity.projectile.thrown.EnderPearlEntity;
 import net.minecraft.item.Items;
-import net.minecraft.network.packet.s2c.play.EntitySpawnS2CPacket;
-import net.minecraft.util.Hand;
-import net.minecraft.util.hit.BlockHitResult;
+import net.minecraft.network.packet.c2s.play.PlayerActionC2SPacket;
+import net.minecraft.network.packet.c2s.play.PlayerInteractItemC2SPacket;
+import net.minecraft.network.packet.c2s.play.PlayerMoveC2SPacket;
 import net.minecraft.util.math.*;
 import org.tarclient.addon.TarAddon;
 import org.tarclient.addon.TarModule;
+import org.tarclient.addon.utils.TarPlayerUtils;
 
 
 public class PearlBoost extends TarModule {
     private final SettingGroup sgGeneral = this.settings.getDefaultGroup();
 
-    private final Setting<Integer> crystalAmount = sgGeneral.add(new IntSetting.Builder()
-        .name("crystals")
-        .description("Crystal amount")
-        .defaultValue(1)
-        .range(0, 5)
+    private final Setting<Double> stepHeight = sgGeneral.add(new DoubleSetting.Builder()
+        .name("step-height")
+        .description("Step height")
+        .defaultValue(2)
+        .sliderRange(0, 3)
         .build()
     );
 
-    private final Setting<Integer> onSneakCrystals = sgGeneral.add(new IntSetting.Builder()
-        .name("on-sneak-crystals")
-        .description("Boost if player is sneaking")
-        .defaultValue(2)
-        .range(0, 5)
+    public final Setting<Boolean> bow = sgGeneral.add(new BoolSetting.Builder()
+        .name("bow")
+        .defaultValue(false)
         .build()
     );
+
 
     public PearlBoost() {
-        super(TarAddon.CATEGORY, "pearl-boost", "Boosts a pearl throw if possible");
-    }
-
-    private int pearlID;
-    private Stage stage;
-    private BlockPos obbyPosition;
-    private int remainingCrystals;
-
-    @Override
-    public void onActivate() {
-        pearlID = -999;
-        stage = Stage.None;
-        obbyPosition = null;
-        remainingCrystals = 0;
+        super(TarAddon.CATEGORY, "pearl-boost", "Boosts a pearl throw if possible through stepping");
     }
 
     @EventHandler
-    private void onPacketReceive(PacketEvent.Receive event) {
-        if (mc.world == null || mc.player == null) return;
-        if (!(event.packet instanceof EntitySpawnS2CPacket packet)) return;
-        if (packet.getEntityType() != EntityType.ENDER_PEARL) return;
-
-        if (pearlID == -999 || stage == Stage.None) {
-            if (packet.getEntityData() == mc.player.getId()) {
-                int crystals = mc.player.isSneaking() ? onSneakCrystals.get() : crystalAmount.get();
-                if (crystals == 0) return;
-                pearlID = packet.getEntityId();
-                stage = Stage.ShouldPlace;
-                obbyPosition = null;
-                remainingCrystals = crystals;
-            }
-        }
-    }
-
-    @EventHandler
-    private void onTickPre(TickEvent.Pre event) {
-        if (mc.world == null || mc.interactionManager == null || mc.player == null) return;
-
-        if (pearlID == -999) {
-            stage = Stage.None;
-            obbyPosition = null;
-            return;
-        }
-
-        Entity entityById = mc.world.getEntityById(pearlID);
-        if (!(entityById instanceof EnderPearlEntity enderPearl)) {
-            pearlID = -999;
-            stage = Stage.None;
-            obbyPosition = null;
-            return;
-        }
-
-
-        if (!enderPearl.isAlive()) {
-            pearlID = -999;
-            stage = Stage.None;
-            return;
-        }
-
-        if (enderPearl.getVelocity().length() < 0.01)
-            return;
-
-
-        switch (stage) {
-            case ShouldPlace -> {
-                if (mc.player.getOffHandStack().getItem() != Items.END_CRYSTAL) return;
-                BlockPos pos = findBoostPosFixed();
-                if (pos != null) {
-                    Rotations.rotate(Rotations.getYaw(pos.toCenterPos()), Rotations.getPitch(pos.toCenterPos()),
-                        () -> {
-                            BlockHitResult bhr = new BlockHitResult(pos.toCenterPos(), Direction.UP, pos, false);
-
-                            mc.interactionManager.interactBlock(mc.player, Hand.OFF_HAND, bhr);
-                        });
-
-
-                    obbyPosition = pos;
-                    stage = Stage.ShouldBreak;
+    private void onPacketSend(PacketEvent.Send event) {
+        if (!mc.isOnThread()) return;
+        if (mc.player == null || mc.world == null) return;
+        if (event.packet instanceof PlayerInteractItemC2SPacket packet) {
+            if (mc.player.getStackInHand(packet.getHand()).isOf(Items.ENDER_PEARL)) {
+                if (doboost(mc.player, mc.world, packet.getYaw(), packet.getPitch())) {
+                    event.cancel();
+                    event.sendSilently(packet); // interact
+                    sendRotatePacket(packet.getYaw(), packet.getPitch(), RotationPacket.Full); // step back
                 }
             }
-            case ShouldBreak -> {
-                if (obbyPosition != null) {
-                    boolean found = false;
-                    for (Entity entity : mc.world.getEntities()) {
-                        if (entity instanceof EndCrystalEntity) {
-                            if (Box.from(new BlockBox(obbyPosition.up())).intersects(entity.getBoundingBox())) {
-                                Rotations.rotate(Rotations.getYaw(entity), Rotations.getPitch(entity),
-                                    () -> attack(entity));
-                                found = true;
-                            }
-                        }
-                    }
-
-                    if (found) {
-                        remainingCrystals--;
-
-                        if (remainingCrystals > 0) {
-                            stage = Stage.ShouldPlace;
-                        } else {
-                            stage = Stage.None;
-                            pearlID = -999;
-                            obbyPosition = null;
-                        }
-                    }
+        }
+        if (event.packet instanceof PlayerActionC2SPacket packet && packet.getAction() == PlayerActionC2SPacket.Action.RELEASE_USE_ITEM) {
+            if (bow.get() && mc.player.getStackInHand(mc.player.getActiveHand()).isOf(Items.BOW)) {
+                if (doboost(mc.player, mc.world, mc.player.getYaw(), mc.player.getPitch())) {
+                    event.cancel();
+                    event.sendSilently(packet); // interact
+                    sendRotatePacket(mc.player.getYaw(), mc.player.getPitch(), RotationPacket.Full); // step back
                 }
             }
         }
     }
 
-    private void attack(Entity target) {
-        if (mc.interactionManager == null || mc.player == null) return;
+    private boolean doboost(PlayerEntity player, ClientWorld world, float yaw, float pitch) {
+        if (!player.isOnGround()) return false; // cant clip not on ground
+        // epearl, boost
+        Vec3d clipPos = TarPlayerUtils.findStepPosition(player, world, stepHeight.get());
+        if (clipPos == null) return false;
 
-        mc.interactionManager.attackEntity(mc.player, target);
-        mc.player.swingHand(Hand.MAIN_HAND);
-    }
-
-    public BlockPos findBoostPosFixed() {
-        if (mc.player == null || mc.world == null) return null;
-
-        Vec3d dir = Vec3d.fromPolar(0, mc.player.getYaw());
-        dir = new Vec3d(dir.x, 0, dir.z);
-
-        if (dir.lengthSquared() < 0.001) return null;
-        dir = dir.normalize();
-
-        BlockPos playerPos = mc.player.getBlockPos();
-
-        int dx = (int) Math.round(dir.x);
-        int dz = (int) Math.round(dir.z);
-
-        BlockPos front = playerPos.add(dx, 0, dz);
-
-        if (!isStrictFront(mc.player, front, dir)) return null;
-
-        if (!canPlaceCrystal(front)) return null;
-
-        return front;
-    }
-
-    private boolean canPlaceCrystal(BlockPos pos) {
-        if (mc.world == null) return false;
-        BlockState state = mc.world.getBlockState(pos);
-
-        if (!(state.isOf(Blocks.OBSIDIAN) || state.isOf(Blocks.BEDROCK))) {
-            return false;
-        }
-
-        if (!mc.world.getBlockState(pos.up()).isAir()) return false;
-
-        Box box = new Box(pos.up());
-        return mc.world.getOtherEntities(null, box).isEmpty();
-    }
-
-    private boolean isStrictFront(PlayerEntity player, BlockPos pos, Vec3d dir) {
-        Vec3d to = Vec3d.ofCenter(pos).subtract(player.getEntityPos());
-
-        Vec3d flat = new Vec3d(to.x, 0, to.z);
-
-        if (flat.lengthSquared() < 0.001) return false;
-
-        flat = flat.normalize();
-
-        return flat.dotProduct(dir) > 0.98;
-    }
-
-
-    private enum Stage {
-        None,
-        ShouldPlace,
-        ShouldBreak,
+        sendPacket(new PlayerMoveC2SPacket.Full(clipPos, yaw, pitch,false, player.horizontalCollision));
+        return true;
     }
 }

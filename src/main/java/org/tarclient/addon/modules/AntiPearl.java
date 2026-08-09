@@ -9,11 +9,7 @@ import meteordevelopment.orbit.EventHandler;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.projectile.ProjectileUtil;
 import net.minecraft.item.Items;
-import net.minecraft.network.packet.c2s.play.PlayerInteractBlockC2SPacket;
 import net.minecraft.network.packet.c2s.play.PlayerInteractItemC2SPacket;
-import net.minecraft.network.packet.c2s.play.UpdateSelectedSlotC2SPacket;
-import net.minecraft.network.packet.s2c.play.UpdateSelectedSlotS2CPacket;
-import net.minecraft.util.Hand;
 import net.minecraft.util.hit.EntityHitResult;
 import net.minecraft.util.hit.HitResult;
 import net.minecraft.util.math.Box;
@@ -47,64 +43,32 @@ public class AntiPearl extends TarModule {
 
     private final Setting<Boolean> blocks = sgGeneral.add(new BoolSetting.Builder()
         .name("blocks")
-        .description("Raytrace 3 blocks, prevent anti-phase from being triggered from normal pearls")
+        .description("Raytrace 3 blocks and prevents bad pearl throws")
         .defaultValue(true)
         .build()
     );
-    int realSlot = -1; // I hate silent swaps
 
     public AntiPearl() {
         super(TarAddon.CATEGORY, "anti-pearl", "Cancels/modifies pearl throw depending on scenario");
-    }
-
-    @Override
-    public void onActivate() {
-        if (mc.player != null) realSlot = mc.player.getInventory().getSelectedSlot();
     }
 
     @EventHandler
     private void onPacketSend(final PacketEvent.Send event) {
         if (mc.player == null) return;
 
-        if (event.packet instanceof UpdateSelectedSlotC2SPacket packet) {
-            realSlot = packet.getSelectedSlot();
-            return;
-        }
-        if (event.packet instanceof UpdateSelectedSlotS2CPacket(int slot)) {
-            realSlot = slot;
-            return;
-        }
-
-
         if (event.packet instanceof PlayerInteractItemC2SPacket packet) {
-            if (packet.getHand() == Hand.OFF_HAND) return;
-            if (realSlot == -1) return;
-            if (mc.player.getInventory().getStack(realSlot).getItem() != Items.ENDER_PEARL) return;
+            if (!mc.player.getStackInHand(packet.getHand()).isOf(Items.ENDER_PEARL)) return;
 
             if (entities.get() && hitsEntity()) {
                 event.cancel();
                 cancelInfo("Entity in the way!");
-                return;
             }
 
             if (blocks.get() && hitsBlock()) {
                 event.cancel();
                 cancelInfo("Block is in the way!");
-                return;
-            }
-            return;
-        }
-        if (event.packet instanceof PlayerInteractBlockC2SPacket packet) {
-            if (packet.getHand() == Hand.OFF_HAND) return;
-            if (realSlot == -1) return;
-            if (mc.player.getInventory().getStack(realSlot).getItem() != Items.ENDER_PEARL) return;
-
-            if (blocks.get()) {
-                info("Cancelled block interaction!");
-                event.cancel(); // pray that silent swap doesnt cancel block place ig
             }
         }
-
     }
 
 

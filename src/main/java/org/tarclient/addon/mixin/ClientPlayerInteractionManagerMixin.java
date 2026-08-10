@@ -4,11 +4,15 @@ import meteordevelopment.meteorclient.MeteorClient;
 import net.minecraft.client.network.ClientPlayerInteractionManager;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.screen.slot.SlotActionType;
+import net.minecraft.util.ActionResult;
+import net.minecraft.util.Hand;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 import org.tarclient.addon.events.ClickSlotEvent;
+import org.tarclient.addon.utils.ViaVersionPacketCancel;
 
 @Mixin(ClientPlayerInteractionManager.class)
 public class ClientPlayerInteractionManagerMixin {
@@ -18,5 +22,16 @@ public class ClientPlayerInteractionManagerMixin {
         if (MeteorClient.EVENT_BUS.post(event).isCancelled()) {
             ci.cancel();
         }
+    }
+
+    // ViaFabric patch, cannot mixin into mixin so fragile stuff here :)
+    @Inject(method = "interactItem", at = @At("HEAD"))
+    private void tar$overrideViaMixinPre(PlayerEntity player, Hand hand, CallbackInfoReturnable<ActionResult> cir) {
+        ViaVersionPacketCancel.shouldCancelExtraMovePacket = hand;
+    }
+
+    @Inject(method = "interactItem", at = @At("TAIL"))
+    private void tar$overrideViaMixinPost(PlayerEntity player, Hand hand, CallbackInfoReturnable<ActionResult> cir) {
+        ViaVersionPacketCancel.shouldCancelExtraMovePacket = null;
     }
 }

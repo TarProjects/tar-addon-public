@@ -5,8 +5,11 @@ import meteordevelopment.meteorclient.settings.BoolSetting;
 import meteordevelopment.meteorclient.settings.DoubleSetting;
 import meteordevelopment.meteorclient.settings.Setting;
 import meteordevelopment.meteorclient.settings.SettingGroup;
+import meteordevelopment.meteorclient.systems.modules.Modules;
 import meteordevelopment.orbit.EventHandler;
+import net.minecraft.client.world.ClientWorld;
 import net.minecraft.entity.Entity;
+import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.entity.projectile.ProjectileUtil;
 import net.minecraft.item.Items;
 import net.minecraft.network.packet.c2s.play.PlayerInteractItemC2SPacket;
@@ -16,7 +19,9 @@ import net.minecraft.util.math.Box;
 import net.minecraft.util.math.Vec3d;
 import org.tarclient.addon.TarAddon;
 import org.tarclient.addon.TarModule;
+import org.tarclient.addon.utils.BurrowUtils;
 import org.tarclient.addon.utils.TarBlockUtils;
+import org.tarclient.addon.utils.TarPlayerUtils;
 
 import java.util.function.Predicate;
 
@@ -48,6 +53,13 @@ public class AntiPearl extends TarModule {
         .build()
     );
 
+    private final Setting<Boolean> checkPearlBoost = sgGeneral.add(new BoolSetting.Builder()
+        .name("check-pearl-boost")
+        .description("Raytrace 3 blocks and prevents bad pearl throws")
+        .defaultValue(true)
+        .build()
+    );
+
     public AntiPearl() {
         super(TarAddon.CATEGORY, "anti-pearl", "Cancels/modifies pearl throw depending on scenario");
     }
@@ -74,20 +86,27 @@ public class AntiPearl extends TarModule {
 
     // return true if pearl hits block with distance <= 3
     private boolean hitsBlock() {
+        if (mc.player == null || mc.world == null) return false;
         double distance = 3;
-        HitResult hitResult = TarBlockUtils.raycastBlocks(distance);
+
+        Vec3d cameraPos = getCameraPos(mc.player, mc.world);
+
+        float yaw = mc.player.getYaw();
+        float pitch = mc.player.getPitch();
+
+        HitResult hitResult = TarBlockUtils.raycastBlocks(distance, yaw, pitch, cameraPos);
 
         return hitResult != null && hitResult.getType() == HitResult.Type.BLOCK;
     }
 
     // return true if pearl hits entity
     private boolean hitsEntity() {
-        if (mc.player == null) return false;
+        if (mc.player == null || mc.world == null) return false;
 
         float tickProgress = mc.getRenderTickCounter().getTickProgress(true);
         double maxDistance = range.get();
 
-        Vec3d cameraPos = mc.player.getCameraPosVec(tickProgress);
+        Vec3d cameraPos = getCameraPos(mc.player, mc.world);
         Vec3d rotation = mc.player.getRotationVec(tickProgress);
         Vec3d lookVector = rotation.multiply(maxDistance);
         Vec3d endPos = cameraPos.add(lookVector);
@@ -109,6 +128,20 @@ public class AntiPearl extends TarModule {
         );
 
         return entityRayCast != null; // returns true on hit
+    }
+
+    private Vec3d getCameraPos(PlayerEntity player, ClientWorld world) {
+        Vec3d cameraPos = player.getCameraPosVec(1);
+
+        if (checkPearlBoost.get() && !BurrowUtils.isPlayerPhased(player)) {
+            PearlBoost pearlBoost = Modules.get().get(PearlBoost.class);
+            if (pearlBoost != null && pearlBoost.isActive()) {
+                Vec3d clipPos = TarPlayerUtils.findStepPosition(player, world, pearlBoost.stepHeight.get());
+                if (clipPos != null) return cameraPos.add(clipPos.subtract(player.getEntityPos()));
+            }
+        }
+
+        return cameraPos;
     }
 
     private void cancelInfo(String reason) {

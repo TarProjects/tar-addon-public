@@ -4,12 +4,15 @@ import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.Blocks;
 import net.minecraft.block.ShapeContext;
+import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.BlockItem;
 import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.Box;
 import net.minecraft.util.math.Direction;
 import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.shape.VoxelShape;
 import net.minecraft.world.EmptyBlockView;
+import net.minecraft.world.World;
 
 import java.util.Arrays;
 import java.util.HashSet;
@@ -55,6 +58,22 @@ public class BurrowUtils {
 
         Block current = mc.world.getBlockState(getCeiledBlockPos()).getBlock();
         return BURROW_BLOCKS.contains(current);
+    }
+
+    public static boolean isPlayerPhased(PlayerEntity player) {
+        World world = player.getEntityWorld();
+        if (world == null) return false;
+
+        Box playerBox = player.getBoundingBox();
+        ShapeContext context = ShapeContext.of(player);
+
+        return BlockPos.stream(playerBox).anyMatch(pos -> {
+            BlockState state = world.getBlockState(pos);
+            if (state.isAir()) return false;
+
+            VoxelShape shape = state.getCollisionShape(world, pos, context);
+            return !shape.isEmpty() && shape.getBoundingBox().offset(pos).intersects(playerBox);
+        });
     }
 
     public static BlockPos getCeiledBlockPos() {

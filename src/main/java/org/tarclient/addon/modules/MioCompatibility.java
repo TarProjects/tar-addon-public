@@ -130,6 +130,13 @@ public class MioCompatibility extends TarModule {
         .build()
     );
 
+    public final Setting<Boolean> patchViaVersion = sgGeneral.add(new BoolSetting.Builder()
+        .name("patch-via-version")
+        .description("Disables extra packet on item use with consumables")
+        .defaultValue(true)
+        .build()
+    );
+
     private final SettingGroup sgFriends = this.settings.createGroup("Friends");
 
 

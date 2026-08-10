@@ -12,13 +12,14 @@ import net.minecraft.network.packet.c2s.play.PlayerMoveC2SPacket;
 import net.minecraft.util.math.*;
 import org.tarclient.addon.TarAddon;
 import org.tarclient.addon.TarModule;
+import org.tarclient.addon.utils.BurrowUtils;
 import org.tarclient.addon.utils.TarPlayerUtils;
 
 
 public class PearlBoost extends TarModule {
     private final SettingGroup sgGeneral = this.settings.getDefaultGroup();
 
-    private final Setting<Double> stepHeight = sgGeneral.add(new DoubleSetting.Builder()
+    public final Setting<Double> stepHeight = sgGeneral.add(new DoubleSetting.Builder()
         .name("step-height")
         .description("Step height")
         .defaultValue(2)
@@ -26,7 +27,7 @@ public class PearlBoost extends TarModule {
         .build()
     );
 
-    public final Setting<Boolean> bow = sgGeneral.add(new BoolSetting.Builder()
+    private final Setting<Boolean> bow = sgGeneral.add(new BoolSetting.Builder()
         .name("bow")
         .defaultValue(false)
         .build()
@@ -63,6 +64,7 @@ public class PearlBoost extends TarModule {
 
     private boolean doboost(PlayerEntity player, ClientWorld world, float yaw, float pitch) {
         if (!player.isOnGround()) return false; // cant clip not on ground
+        if (BurrowUtils.isPlayerPhased(player)) return false; // cant in phase!
         // epearl, boost
         Vec3d clipPos = TarPlayerUtils.findStepPosition(player, world, stepHeight.get());
         if (clipPos == null) return false;

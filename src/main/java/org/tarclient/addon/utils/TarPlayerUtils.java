@@ -6,6 +6,7 @@ import net.minecraft.util.math.Box;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.util.shape.VoxelShape;
 import net.minecraft.world.World;
+import org.jspecify.annotations.Nullable;
 
 import java.util.List;
 
@@ -17,6 +18,7 @@ public class TarPlayerUtils {
      *
      * @return Vec3d
      */
+    @Nullable
     public static Vec3d findStepPosition(PlayerEntity player, World world, double stepHeight) {
         Box originalBox = player.getBoundingBox();
         Vec3d originalPos = player.getEntityPos();

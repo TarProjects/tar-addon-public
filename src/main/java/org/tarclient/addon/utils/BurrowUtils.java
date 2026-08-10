@@ -72,7 +72,7 @@ public class BurrowUtils {
             if (state.isAir()) return false;
 
             VoxelShape shape = state.getCollisionShape(world, pos, context);
-            return !shape.isEmpty() && shape.getBoundingBox().offset(pos).intersects(playerBox);
+            return !shape.isEmpty() && shape.getBoundingBox().offset(pos).intersects(playerBox.expand(-1e-7));
         });
     }
 

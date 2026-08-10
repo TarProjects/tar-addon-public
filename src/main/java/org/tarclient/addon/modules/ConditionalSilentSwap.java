@@ -21,8 +21,8 @@ public class ConditionalSilentSwap extends TarModule {
     private final SettingGroup sgGeneral = this.settings.getDefaultGroup();
 
     private final Setting<List<String>> switchToOtherCommands = sgGeneral.add(new StringListSetting.Builder()
-        .name("switch-to-other-commands")
-        .description("Commands to run when switching to other items")
+        .name("switch-to-totem-commands")
+        .description("Commands to run when switching to totems items")
         .defaultValue("autocrystal autoswap silent", "autocrystal PlaceDelay 175")
         .build()
     );
@@ -34,7 +34,7 @@ public class ConditionalSilentSwap extends TarModule {
         .build()
     );
 
-    private boolean lastHadCrystals;
+    private boolean lastHadTotems;
 
     public ConditionalSilentSwap() {
         super(TarAddon.CATEGORY, "conditional-silent-swap", "Switches mio settings to silent swap when crystals are missing");
@@ -47,37 +47,35 @@ public class ConditionalSilentSwap extends TarModule {
             return;
         }
 
-        lastHadCrystals = hasCrystals(mc.player);
+        lastHadTotems = hasTotems(mc.player);
     }
 
     @EventHandler
     private void onTickPre(TickEvent.Pre event) {
         if (mc.player == null) return;
 
-        boolean currentlyHasCrystals = hasCrystals(mc.player);
+        boolean currentlyHasTotems = hasTotems(mc.player);
 
-        if (lastHadCrystals && !currentlyHasCrystals) {
-            // had crystals -> now something else
-            // run other commands
+        if (!lastHadTotems && currentlyHasTotems) {
+            // no tots -> tots
             for (String command : switchToOtherCommands.get()) {
                 if (command.isEmpty()) continue;
                 MioUtils.sendMioMessage(command);
             }
         }
 
-        if (!lastHadCrystals && currentlyHasCrystals) {
-            // didnt have crystals -> now crystals
-            // run crystal commands
+        if (lastHadTotems && !currentlyHasTotems) {
+            // tots -> no tots
             for (String command : switchToCrystalCommands.get()) {
                 if (command.isEmpty()) continue;
                 MioUtils.sendMioMessage(command);
             }
         }
 
-        lastHadCrystals = currentlyHasCrystals;
+        lastHadTotems = currentlyHasTotems;
     }
 
-    private boolean hasCrystals(PlayerEntity player) {
-        return player.getOffHandStack().copy().getItem() == Items.END_CRYSTAL;
+    private boolean hasTotems(PlayerEntity player) {
+        return player.getOffHandStack().copy().getItem() == Items.TOTEM_OF_UNDYING;
     }
 }

@@ -101,7 +101,7 @@ public class PhaseFix extends TarModule {
     @EventHandler
     private void onMove(PlayerMoveEvent event) {
         if (mc.player == null || isNotSurvival()) return;
-        if (!isBurrowed()) return;
+        if (!isPlayerPhased(mc.player)) return;
 
         Vec3d velocity = event.movement;
 
@@ -149,7 +149,7 @@ public class PhaseFix extends TarModule {
             return;
         }
 
-        if (isBurrowed() && checkHead()) {
+        if (isPlayerPhased(mc.player) && checkHead()) {
             event.cancel();
 
             BlockPos blockPos = getCeiledBlockPos();
@@ -172,9 +172,9 @@ public class PhaseFix extends TarModule {
 
     @EventHandler
     private void onPacketSend(PacketEvent.Send event) {
-        if (!Utils.canUpdate() || isNotSurvival()) return;
+        if (!Utils.canUpdate() || isNotSurvival() || mc.player == null) return;
 
-        if (event.packet instanceof PlayerMoveC2SPacket && isBurrowed()) {
+        if (event.packet instanceof PlayerMoveC2SPacket && isPlayerPhased(mc.player)) {
             ((PlayerMoveC2SPacketAccessor) event.packet).meteor$setOnGround(onGround.get());
         }
     }

@@ -185,8 +185,11 @@ public class AntiExp extends TarModule {
             if (box.intersects(mc.player.getBoundingBox())) return; // already intersects, no need to place!
         }
 
+        double bestDistance = 0;
+        BlockPos bestPos = null;
+
         // firstlandpos null or box doesnt intersect, calculate with directionals
-        for (Direction direction : Direction.Type.HORIZONTAL) {
+        for (Direction direction : Direction.values()) {
             BlockPos offset = projectile.getBlockPos().offset(direction);
 
             // spoof
@@ -203,12 +206,18 @@ public class AntiExp extends TarModule {
                         if (mc.player.squaredDistanceTo(offset.toCenterPos()) > range.get() * range.get()) continue;
                         Direction side = BlockUtils.getClosestPlaceSide(offset);
                         if (side == null) continue;
-                        this.placing = offset;
-                        return;
+
+                        double distance = mc.player.squaredDistanceTo(offset.toCenterPos());
+                        if (bestPos == null || bestDistance > distance) {
+                            bestPos = offset;
+                            bestDistance = distance;
+                        }
                     }
                 }
             }
         }
+
+        this.placing = bestPos;
     }
 
     private Box createBox(Vec3d vec3d) {

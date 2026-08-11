@@ -1,5 +1,6 @@
 package org.tarclient.addon.modules;
 
+import meteordevelopment.meteorclient.events.packets.PacketEvent;
 import meteordevelopment.meteorclient.events.render.Render3DEvent;
 import meteordevelopment.meteorclient.events.world.PlaySoundEvent;
 import meteordevelopment.meteorclient.events.world.TickEvent;
@@ -13,11 +14,11 @@ import meteordevelopment.meteorclient.utils.render.color.Color;
 import meteordevelopment.meteorclient.utils.render.color.SettingColor;
 import meteordevelopment.meteorclient.utils.world.BlockUtils;
 import meteordevelopment.orbit.EventHandler;
-import net.fabricmc.loader.impl.lib.sat4j.core.Vec;
 import net.minecraft.block.Blocks;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.Items;
+import net.minecraft.network.packet.s2c.play.PlayerPositionLookS2CPacket;
 import net.minecraft.sound.SoundEvents;
 import net.minecraft.util.math.*;
 import net.minecraft.world.WorldView;
@@ -78,6 +79,14 @@ public class ChorusTrap extends TarModule {
         .build()
     );
 
+    private final Setting<Double> timeout = sgRender.add(new DoubleSetting.Builder()
+        .name("timeout")
+        .description("How many seconds before removing from chorus positions? Fixes issues with low ping")
+        .defaultValue(5)
+        .sliderRange(1, 10)
+        .build()
+    );
+
 
     /* --- Render --- */
     private final Setting<Double> fadeTime = sgRender.add(new DoubleSetting.Builder()
@@ -107,9 +116,14 @@ public class ChorusTrap extends TarModule {
         .build()
     );
 
-    private final List<Vec3d> chorusPositions = new ArrayList<>();
+    private final List<ChorusPosition> chorusPositions = new ArrayList<>();
     private final List<BlockPos> placePositions = new ArrayList<>();
     private final Map<BlockPos, Double> renderQueue = new HashMap<>();
+
+    private long lastTeleport;
+    private Vec3d lastTeleportPosition;
+
+    private Vec3d preTeleportPos;
 
     private int cooldown;
 
@@ -119,10 +133,25 @@ public class ChorusTrap extends TarModule {
 
     @Override
     public void onActivate() {
+        if (mc.player == null) return;
         cooldown = 0;
         chorusPositions.clear();
         placePositions.clear();
         renderQueue.clear();
+
+        lastTeleport = 0;
+        lastTeleportPosition = null;
+        preTeleportPos = mc.player.getEntityPos();
+    }
+
+    @EventHandler
+    private void onPacketReceive(PacketEvent.Receive event) {
+        if (mc.player == null) return;
+        if (event.packet instanceof PlayerPositionLookS2CPacket packet) {
+            preTeleportPos = mc.player.getEntityPos();
+            lastTeleport = System.currentTimeMillis();
+            lastTeleportPosition = packet.change().position();
+        }
     }
 
     @EventHandler
@@ -131,14 +160,22 @@ public class ChorusTrap extends TarModule {
         if (!event.sound.getId().equals(SoundEvents.ITEM_CHORUS_FRUIT_TELEPORT.id())) return;
         if (!mc.isOnThread()) return; // never happens, safety tho
 
+        long now = System.currentTimeMillis();
+
         Vec3d vec = new Vec3d(event.sound.getX(), event.sound.getY(), event.sound.getZ());
         Box targetBox = getBox(vec);
+        if (now - lastTeleport < 1000 && lastTeleportPosition != null) { // hardcoded 1 second!
+            if (vec.squaredDistanceTo(lastTeleportPosition) < 1) {
+                // < 1 block distance, probably own teleport!
+                return;
+            }
+        }
 
-        boolean intersects = !mc.world.getEntitiesByClass(LivingEntity.class, targetBox, (entity) -> true).isEmpty();
+        boolean intersects = !mc.world.getEntitiesByClass(LivingEntity.class, targetBox.expand(0.25), (entity) -> true).isEmpty();
         if (intersects) return;
-        if (lastTickBB(mc.player).intersects(targetBox)) return; // own tp
+        if (lastTickBB(mc.player).intersects(targetBox.expand(0.25))) return; // own tp
 
-        chorusPositions.add(vec);
+        chorusPositions.add(new ChorusPosition(vec, now));
 
         if (!instant.get()) return; // instant logic from here on out
 
@@ -169,19 +206,29 @@ public class ChorusTrap extends TarModule {
             return;
         }
 
+        placePositions.clear();
+
         FindItemResult obby = InvUtils.findInHotbar(Items.OBSIDIAN);
         if (!obby.found()) return;
         if (onlyWhenSelfInHole.get() && !PlayerUtils.isInHole(true)) return;
 
-        Iterator<Vec3d> iterator = chorusPositions.iterator();
+        Iterator<ChorusPosition> iterator = chorusPositions.iterator();
 
+        long now = System.currentTimeMillis();
         while (iterator.hasNext()) {
-            Vec3d vec = iterator.next();
+            ChorusPosition position = iterator.next();
+            Vec3d vec = position.pos;
+
+            if (now - position.timeOfTeleport > timeout.get() * 1000) {
+                // timeout
+                iterator.remove();
+                continue;
+            }
 
             Box targetBox = getBox(vec);
             BlockPos feetPos = BlockPos.ofFloored(vec);
 
-            boolean intersects = !mc.world.getEntitiesByClass(LivingEntity.class, targetBox, (entity) -> true).isEmpty();
+            boolean intersects = !mc.world.getEntitiesByClass(LivingEntity.class, targetBox.expand(0.25), (entity) -> true).isEmpty();
             if (intersects) {
                 iterator.remove();
                 continue;
@@ -203,9 +250,11 @@ public class ChorusTrap extends TarModule {
     }
 
     private void handlePlaceLogic(FindItemResult obby, boolean ignoreBpt) {
+        if (mc.player == null) return;
         int placed = 0;
 
         for (BlockPos blockPos : placePositions) {
+            if (mc.player.getEyePos().squaredDistanceTo(blockPos.toCenterPos()) > range.get() * range.get()) continue; // cheap distance check
             if (obby.count() - placed <= 0) break;
             if (!ignoreBpt && placed >= blocksPerTick.get()) break;
 
@@ -271,15 +320,15 @@ public class ChorusTrap extends TarModule {
         }
     }
 
-    private Box lastTickBB(PlayerEntity entity) {
-        Box currentBox = entity.getBoundingBox();
+    private Box lastTickBB(PlayerEntity player) {
+        Box currentBox = player.getBoundingBox();
         double width = currentBox.getLengthX();
         double height = currentBox.getLengthY();
         double depth = currentBox.getLengthZ();
 
-        double centerX = entity.lastX;
-        double centerY = entity.lastY;
-        double centerZ = entity.lastZ;
+        double centerX = preTeleportPos.getX();
+        double centerY = preTeleportPos.getY();
+        double centerZ = preTeleportPos.getZ();
 
         return Box.of(new Vec3d(centerX, centerY, centerZ), width, height, depth);
     }
@@ -320,4 +369,6 @@ public class ChorusTrap extends TarModule {
             entry.setValue(remaining - (float) event.frameTime);
         }
     }
+
+    public record ChorusPosition(Vec3d pos, long timeOfTeleport) {}
 }

@@ -115,6 +115,16 @@ public class AntiSurround extends TarModule {
         .description("How much damage to block before placing crystal")
         .defaultValue(0.8)
         .sliderRange(0, 1)
+        .visible(replace::get)
+        .build()
+    );
+
+    private final Setting<Double> replacePlaceConditionAnvil = sgReplace.add(new DoubleSetting.Builder()
+        .name("replace-place-condition-anvil")
+        .description("How much damage to block before placing crystal (with anvil as the block)")
+        .defaultValue(0)
+        .sliderRange(0, 1)
+        .visible(replace::get)
         .build()
     );
 
@@ -169,6 +179,23 @@ public class AntiSurround extends TarModule {
         .build()
     );
 
+    private final Setting<Boolean> disableAutoCrystal = sgReplace.add(new BoolSetting.Builder()
+        .name("disable-auto-crystal")
+        .description("Disables auto-crystal")
+        .defaultValue(true)
+        .visible(replace::get)
+        .build()
+    );
+
+    private final Setting<Integer> autoCrystalDisableTicks = sgReplace.add(new IntSetting.Builder()
+        .name("auto-crystal-disable-ticks")
+        .description("Helps with consistent crystal speeds")
+        .defaultValue(10)
+        .sliderRange(0, 10)
+        .visible(() -> disableAutoCrystal.get() && replace.get())
+        .build()
+    );
+
     /* --- Delay --- */
     private final Setting<Integer> cooldown = sgDelay.add(new IntSetting.Builder()
         .name("cooldown")
@@ -211,6 +238,7 @@ public class AntiSurround extends TarModule {
     private int globalCooldown = 0;
     private int enableAutoMine = 0;
     private int enableSpeedMine = 0;
+    private int enableAutoCrystal = 0;
 
     public AntiSurround() {
         super(TarAddon.CATEGORY, "anti-surround", "Tries to exploit mechanics in order to deal more damage to people surrounding");
@@ -292,6 +320,11 @@ public class AntiSurround extends TarModule {
                 if (disableAutoMine.get()) {
                     MioUtils.toggleAutoMine(false);
                     enableAutoMine = autoMineDisableTicks.get();
+                }
+
+                if (disableAutoCrystal.get()) {
+                    MioUtils.toggleModule("AutoCrystal", false);
+                    enableAutoCrystal = autoCrystalDisableTicks.get();
                 }
 
                 enableSpeedMine = speedMinePauseTicks.get();
@@ -415,6 +448,16 @@ public class AntiSurround extends TarModule {
                 }
             }
         }
+
+        if (disableAutoCrystal.get()) {
+            if (enableAutoCrystal > 0) {
+                enableAutoCrystal--;
+                if (enableAutoCrystal == 0) {
+                    MioUtils.toggleModule("AutoCrystal", true);
+                }
+            }
+        }
+
         if (enableSpeedMine > 0) {
             enableSpeedMine--;
         }
@@ -432,7 +475,8 @@ public class AntiSurround extends TarModule {
         Direction outWards = target.direction;
 
         if (replace.get() && isValidReplaceSurroundPos(breaking, outWards)) {
-            if (getBreakingProgress() < replacePlaceCondition.get()) return;
+            double condition = mc.world.getBlockState(breaking).getBlock() == Blocks.ANVIL ? replacePlaceConditionAnvil.get() : replacePlaceCondition.get();
+            if (getBreakingProgress() < condition) return;
             tryPlaceCrystalOutside(breaking, outWards);
         } else if (placeDestroyingCrystal.get() && isSafeToPlaceDestroyingCrystal() && hasCrystalPlatformBelow(breaking)) {
             if (getBreakingProgress() < placeDestroyingCrystalCondition.get()) return;

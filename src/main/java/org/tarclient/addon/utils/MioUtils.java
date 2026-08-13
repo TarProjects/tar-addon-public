@@ -132,6 +132,10 @@ public class MioUtils extends GenericUtil {
         toggleModule(mioCompatibility.toggleAutoMine.get(), state);
     }
 
+    public static void toggleSpeedMine(boolean state) {
+        toggleModule(mioCompatibility.toggleSpeedMine.get(), state);
+    }
+
     public static void toggleOffhand(boolean state) {
         toggleModule(mioCompatibility.toggleOffhand.get(), state);
     }
@@ -164,6 +168,7 @@ public class MioUtils extends GenericUtil {
 
 
     private static void internalSendWithPrefix(String message) {
+        if (!MioUtils.mioCompatibility.enabled.get()) return;
         ChatUtils.sendPlayerMsg(mioCompatibility.mioPrefix.get() + message, false);
     }
 

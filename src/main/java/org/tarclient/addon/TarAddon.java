@@ -71,6 +71,7 @@ public class TarAddon extends MeteorAddon {
         Modules.get().add(new ArenaReset());
         Modules.get().add(new AutoCEV());
         Modules.get().add(new AutoDuelAccept());
+        Modules.get().add(new AutoEnderChest());
         Modules.get().add(new AutoEZ());
         Modules.get().add(new AutoKit());
         Modules.get().add(new AutoSpectator());

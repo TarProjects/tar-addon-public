@@ -84,7 +84,7 @@ public class AntiArmorBreak extends TarModule {
             double durability = (double) (maxDmg - dmg) / maxDmg;
 
             if (durability * 100 < percentage.get() && mc.player.currentScreenHandler.getCursorStack().isEmpty()) {
-                if (warn.get()) info(String.format("Trying to unequip armor with %d%%!", Math.round(durability)));
+                if (warn.get()) info(String.format("Trying to unequip armor with %d%%!", Math.round(durability * 100)));
 
                 if (hasInventorySpace(mc.player)) {
                     InvUtils.shiftClick().slotArmor(i);

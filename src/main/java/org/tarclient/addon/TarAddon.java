@@ -96,6 +96,7 @@ public class TarAddon extends MeteorAddon {
         Modules.get().add(new InfiniteNameTags());
         Modules.get().add(new InfiniteNameTagsTeleporter());
         Modules.get().add(new InventoryFixes());
+        Modules.get().add(new IRCModule());
         Modules.get().add(new ItemUse());
         Modules.get().add(new KitDeleter());
         Modules.get().add(new MioCompatibility());

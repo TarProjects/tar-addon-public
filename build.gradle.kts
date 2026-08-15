@@ -2,6 +2,11 @@ import org.gradle.api.tasks.javadoc.Javadoc
 
 plugins {
     alias(libs.plugins.fabric.loom)
+    id("com.gradleup.shadow") version "9.6.1"
+}
+
+configurations {
+    create("shadowOnly")
 }
 
 base {
@@ -19,6 +24,7 @@ repositories {
         name = "meteor-maven-snapshots"
         url = uri("https://maven.meteordev.org/snapshots")
     }
+    maven { url = uri("https://jitpack.io") }
 }
 
 dependencies {
@@ -31,7 +37,25 @@ dependencies {
     modImplementation(libs.meteor.client)
     implementation(libs.starscript)
 
+    implementation("com.github.PeaceClient:Peace-IRC:1.0")
+    "shadowOnly"("com.github.PeaceClient:Peace-IRC:1.0")
+
     compileOnly(libs.baritone)
+}
+
+tasks.shadowJar {
+    configurations = listOf(project.configurations["shadowOnly"])
+    archiveClassifier.set("unmapped")
+    exclude("META-INF/*.SF", "META-INF/*.DSA", "META-INF/*.RSA")
+}
+
+tasks.remapJar {
+    dependsOn(tasks.shadowJar)
+    inputFile.set(tasks.shadowJar.get().archiveFile.get())
+}
+
+tasks.build {
+    dependsOn(tasks.shadowJar)
 }
 
 tasks {
@@ -47,14 +71,6 @@ tasks {
 
         filesMatching("fabric.mod.json") {
             expand(propertyMap)
-        }
-    }
-
-    jar {
-        inputs.property("archivesName", project.base.archivesName.get())
-
-        from("LICENSE") {
-            rename { "${it}_${inputs.properties["archivesName"]}" }
         }
     }
 

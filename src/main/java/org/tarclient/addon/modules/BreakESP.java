@@ -11,12 +11,12 @@ import meteordevelopment.meteorclient.utils.render.color.Color;
 import meteordevelopment.meteorclient.utils.render.color.SettingColor;
 import meteordevelopment.orbit.EventHandler;
 import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.Box;
 import net.minecraft.util.math.MathHelper;
 import org.tarclient.addon.TarAddon;
 import org.tarclient.addon.TarModule;
 import org.tarclient.addon.utils.ColorUtils;
 import org.tarclient.addon.utils.MiningUtils;
+import org.tarclient.addon.utils.RenderUtils;
 
 import static org.tarclient.addon.utils.MiningUtils.Breaking;
 import static org.tarclient.addon.utils.MiningUtils.getBreaking;
@@ -31,10 +31,10 @@ public class BreakESP extends TarModule {
         .build()
     );
 
-    private final Setting<Animation> animation = sgRender.add(new EnumSetting.Builder<Animation>()
+    private final Setting<RenderUtils.BreakAnimation> animation = sgRender.add(new EnumSetting.Builder<RenderUtils.BreakAnimation>()
         .name("animation")
         .description("What animation to use on render")
-        .defaultValue(Animation.Grow)
+        .defaultValue(RenderUtils.BreakAnimation.Grow)
         .build()
     );
 
@@ -113,71 +113,6 @@ public class BreakESP extends TarModule {
         Color side = ColorUtils.lerp(startSideColor.get(), endSideColor.get(), progress);
 
 
-        event.renderer.box(getBox(pos, progress, animation.get()), side, line, shapeMode.get(), 0);
-    }
-
-    @SuppressWarnings("DuplicateBranchesInSwitch")
-    private Box getBox(BlockPos pos, double progress, Animation animation) {
-        double minX, minY, minZ, maxX, maxY, maxZ;
-
-        switch (animation) {
-            case Static:
-                minX = pos.getX();
-                minY = pos.getY();
-                minZ = pos.getZ();
-                maxX = pos.getX() + 1;
-                maxY = pos.getY() + 1;
-                maxZ = pos.getZ() + 1;
-                break;
-
-            case Grow:
-                double centerX = pos.getX() + 0.5;
-                double centerY = pos.getY() + 0.5;
-                double centerZ = pos.getZ() + 0.5;
-                double halfSize = 0.5 * progress;
-                minX = centerX - halfSize;
-                minY = centerY - halfSize;
-                minZ = centerZ - halfSize;
-                maxX = centerX + halfSize;
-                maxY = centerY + halfSize;
-                maxZ = centerZ + halfSize;
-                break;
-
-            case Shrink:
-                double shrink = 0.5 * (1 - progress);
-                minX = pos.getX() + shrink;
-                minY = pos.getY() + shrink;
-                minZ = pos.getZ() + shrink;
-                maxX = pos.getX() + 1 - shrink;
-                maxY = pos.getY() + 1 - shrink;
-                maxZ = pos.getZ() + 1 - shrink;
-                break;
-
-            case Up:
-                minX = pos.getX();
-                minZ = pos.getZ();
-                maxX = pos.getX() + 1;
-                maxZ = pos.getZ() + 1;
-                minY = pos.getY();
-                maxY = pos.getY() + progress;
-                break;
-
-            default:
-                minX = pos.getX();
-                minY = pos.getY();
-                minZ = pos.getZ();
-                maxX = pos.getX() + 1;
-                maxY = pos.getY() + 1;
-                maxZ = pos.getZ() + 1;
-        }
-
-        return new Box(minX, minY, minZ, maxX, maxY, maxZ);
-    }
-
-    private enum Animation {
-        Static,
-        Grow,
-        Shrink,
-        Up
+        event.renderer.box(RenderUtils.getBox(pos, progress, animation.get()), side, line, shapeMode.get(), 0);
     }
 }

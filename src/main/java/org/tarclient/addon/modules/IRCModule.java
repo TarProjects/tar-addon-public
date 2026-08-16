@@ -4,7 +4,9 @@ import com.peace.client.IRCClientEventHandler;
 import com.peace.client.IRCClientMain;
 import com.peace.packets.c2s.BreakingC2SPacket;
 import com.peace.packets.c2s.ChatC2SPacket;
+import com.peace.packets.c2s.PrivateMessageC2SPacket;
 import com.peace.packets.c2s.SeenEntityC2SPacket;
+import com.peace.packets.s2c.IRCUsersS2CPacket;
 import meteordevelopment.meteorclient.events.game.SendMessageEvent;
 import meteordevelopment.meteorclient.events.render.Render2DEvent;
 import meteordevelopment.meteorclient.events.render.Render3DEvent;
@@ -19,18 +21,24 @@ import meteordevelopment.meteorclient.utils.render.color.SettingColor;
 import meteordevelopment.orbit.EventHandler;
 import net.minecraft.client.world.ClientWorld;
 import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.network.packet.s2c.play.ChatSuggestionsS2CPacket;
 import net.minecraft.util.math.BlockPos;
 import org.joml.Vector3d;
 import org.jspecify.annotations.Nullable;
 import org.tarclient.addon.TarAddon;
 import org.tarclient.addon.TarModule;
+import org.tarclient.addon.events.SendTypedMessageEvent;
 import org.tarclient.addon.utils.ColorUtils;
 import org.tarclient.addon.utils.MiningUtils;
 import org.tarclient.addon.utils.RenderUtils;
 
 
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class IRCModule extends TarModule {
     private final SettingGroup sgGeneral = this.settings.getDefaultGroup();
@@ -78,15 +86,22 @@ public class IRCModule extends TarModule {
         .build()
     );
 
+    private final Setting<Boolean> overrideMsg = sgBlockBreaking.add(new BoolSetting.Builder()
+        .name("override-msg")
+        .description("Overrides the /msg command if both users are in the IRC")
+        .defaultValue(true)
+        .build()
+    );
+
     /* --- Block Breaking --- */
-    private final Setting<Boolean> blockBreaking = sgGeneral.add(new BoolSetting.Builder()
+    private final Setting<Boolean> blockBreaking = sgBlockBreaking.add(new BoolSetting.Builder()
         .name("block-breaking")
         .description("Renders block breaking progresses")
         .defaultValue(true)
         .build()
     );
 
-    private final Setting<Integer> range = sgGeneral.add(new IntSetting.Builder()
+    private final Setting<Integer> range = sgBlockBreaking.add(new IntSetting.Builder()
         .name("range")
         .description("Range of checking for block breaking")
         .defaultValue(16)
@@ -137,14 +152,14 @@ public class IRCModule extends TarModule {
     );
 
     /* --- Nametags --- */
-    private final Setting<Boolean> nametags = sgGeneral.add(new BoolSetting.Builder()
+    private final Setting<Boolean> nametags = sgNametags.add(new BoolSetting.Builder()
         .name("nametags")
         .description("Renders nametags that are far away using the IRC")
         .defaultValue(true)
         .build()
     );
 
-    private final Setting<Integer> minDistance = sgGeneral.add(new IntSetting.Builder()
+    private final Setting<Integer> minDistance = sgNametags.add(new IntSetting.Builder()
         .name("min-distance")
         .description("Minimum distance to render nametags at")
         .defaultValue(47)
@@ -152,7 +167,7 @@ public class IRCModule extends TarModule {
         .build()
     );
 
-    private final Setting<Integer> maxDistance = sgGeneral.add(new IntSetting.Builder()
+    private final Setting<Integer> maxDistance = sgNametags.add(new IntSetting.Builder()
         .name("max-distance")
         .description("Maximum distance to render nametags at")
         .defaultValue(200)
@@ -189,13 +204,16 @@ public class IRCModule extends TarModule {
         .build()
     );
 
+    private static final Pattern MSG_REGEX = Pattern.compile("^/(?:w|msg) (\\w+) (.+)");
+
+    public final Set<String> onlineIRCUsers = ConcurrentHashMap.newKeySet();
     private final Map<String, Breaking> breakingMap = new ConcurrentHashMap<>();
     private final Map<String, BlockPos> positionMap = new ConcurrentHashMap<>();
     boolean disabling;
 
     int tickCounter;
 
-    IRCClientMain ircClient;
+    public IRCClientMain ircClient;
 
     public IRCModule() {
         super(TarAddon.CATEGORY, "irc-module", "Allows you to share information with friends through a IRC server");
@@ -327,12 +345,29 @@ public class IRCModule extends TarModule {
     }
 
     @EventHandler
-    private void onChatSend(SendMessageEvent event) {
+    private void onMessageSend(SendMessageEvent event) {
         String prefix = ircPrefix.get().strip();
         if (prefix.isEmpty()) return;
         if (event.message.startsWith(prefix)) {
             ircClient.sendPacket(new ChatC2SPacket(event.message.substring(prefix.length()).strip()));
             event.cancel();
+        }
+    }
+
+    @EventHandler
+    private void onChatSend(SendTypedMessageEvent event) {
+        if (overrideMsg.get()) {
+            Matcher matcher = MSG_REGEX.matcher(event.message);
+            if (matcher.find()) {
+                String target = matcher.group(1);
+                String message = matcher.group(2);
+
+                if (onlineIRCUsers.contains(target)) {
+                    ircClient.sendPacket(new PrivateMessageC2SPacket(target, message));
+
+                    event.cancel();
+                }
+            }
         }
     }
 
@@ -366,6 +401,40 @@ public class IRCModule extends TarModule {
         @Override
         public void onIrcChat(IRCClientMain ircClientMain, String username, String message) {
             mc.execute(() -> info("<%s> %s", username, message));
+        }
+
+        @Override
+        public void onPrivateMessage(IRCClientMain main, String sender, String message, boolean isOwnMessage) {
+            String msg = isOwnMessage ? "to %s: %s" : "%s says: %s";
+            mc.execute(() -> info(msg, sender, message));
+        }
+
+        @Override
+        public void onIRCUserUpdate(IRCClientMain main, List<String> usernames, IRCUsersS2CPacket.Action action, boolean shouldAnnounce) {
+            if (action.equals(IRCUsersS2CPacket.Action.Add)) {
+                onlineIRCUsers.addAll(usernames);
+                if (shouldAnnounce) {
+                    mc.execute(() -> {
+                        for (String user : usernames) {
+                            info(user + " has joined the IRC");
+                        }
+                    });
+                }
+            }
+            if (action.equals(IRCUsersS2CPacket.Action.Remove)) {
+                usernames.forEach((username) -> {
+                    onlineIRCUsers.remove(username);
+                    breakingMap.remove(username);
+                });
+
+                if (shouldAnnounce) {
+                    mc.execute(() -> {
+                        for (String user : usernames) {
+                            info(user + " has left the IRC");
+                        }
+                    });
+                }
+            }
         }
 
         @Override

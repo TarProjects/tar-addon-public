@@ -4,7 +4,6 @@ import meteordevelopment.meteorclient.events.packets.PacketEvent;
 import meteordevelopment.meteorclient.events.world.TickEvent;
 import meteordevelopment.meteorclient.settings.*;
 import meteordevelopment.meteorclient.utils.player.InvUtils;
-import meteordevelopment.meteorclient.utils.player.Rotations;
 import meteordevelopment.orbit.EventHandler;
 import net.minecraft.component.DataComponentTypes;
 import net.minecraft.component.type.PotionContentsComponent;
@@ -12,19 +11,16 @@ import net.minecraft.entity.effect.StatusEffect;
 import net.minecraft.entity.effect.StatusEffectInstance;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
-import net.minecraft.item.PotionItem;
 import net.minecraft.item.SplashPotionItem;
 import net.minecraft.network.packet.c2s.play.ClientStatusC2SPacket;
+import net.minecraft.network.packet.c2s.play.PlayerInteractItemC2SPacket;
 import net.minecraft.util.Hand;
 import org.tarclient.addon.TarAddon;
 import org.tarclient.addon.TarModule;
-import org.tarclient.addon.utils.StackUtils;
 
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-
-import static meteordevelopment.meteorclient.MeteorClient.mc;
 
 public class AutoKit extends TarModule {
     private final SettingGroup sgGeneral = this.settings.getDefaultGroup();
@@ -257,11 +253,11 @@ public class AutoKit extends TarModule {
                         StatusEffect effect = instance.getEffectType().value();
                         if (!thrownPots.contains(effect) && potions.get().contains(effect)) {
                             found = true;
-                            int slot = i;
-                            Rotations.rotate(mc.player.getYaw(), -90, () -> {
-                                InvUtils.quickSwap().fromId(slot).toHotbar(mc.player.getInventory().getSelectedSlot());
-                                mc.interactionManager.interactItem(mc.player, Hand.MAIN_HAND);
-                            });
+
+                            InvUtils.quickSwap().fromId(i).toHotbar(mc.player.getInventory().getSelectedSlot());
+                            sendRotatePacket(mc.player.getYaw(), -90, RotationPacket.Full);
+                            sendPacket(new PlayerInteractItemC2SPacket(Hand.MAIN_HAND, 0, mc.player.getYaw(), -90));
+
                             thrownPots.add(effect);
                             break;
                         }

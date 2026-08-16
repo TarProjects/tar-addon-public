@@ -108,6 +108,7 @@ public class BreakESP extends TarModule {
         if (pos == null) return;
 
         double progress = MathHelper.lerp(animationProgress - lastAnimationProgress, lastAnimationProgress, event.tickDelta);
+        if (event.tickDelta > 1) System.out.println("OOP");
 
         Color line = ColorUtils.lerp(startLineColor.get(), endLineColor.get(), progress);
         Color side = ColorUtils.lerp(startSideColor.get(), endSideColor.get(), progress);

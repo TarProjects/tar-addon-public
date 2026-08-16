@@ -2,6 +2,7 @@ package org.tarclient.addon;
 
 import meteordevelopment.meteorclient.addons.GithubRepo;
 import meteordevelopment.meteorclient.addons.MeteorAddon;
+import meteordevelopment.meteorclient.commands.Command;
 import meteordevelopment.meteorclient.commands.Commands;
 import meteordevelopment.meteorclient.systems.modules.Category;
 import meteordevelopment.meteorclient.systems.modules.Modules;
@@ -125,6 +126,7 @@ public class TarAddon extends MeteorAddon {
             Modules.get().add(new AutoLobby());
         }
 
+        Commands.add(new IRCCommand());
         Commands.add(new KitCommand());
         Commands.add(new ResetChangesCommand());
         Commands.add(new SetPoseCommand());

@@ -37,8 +37,10 @@ dependencies {
     modImplementation(libs.meteor.client)
     implementation(libs.starscript)
 
-    implementation("com.github.PeaceClient:Peace-IRC:1.0.1")
-    "shadowOnly"("com.github.PeaceClient:Peace-IRC:1.0.1")
+    implementation("com.github.PeaceClient:Peace-IRC:1.0.2")
+    "shadowOnly"("com.github.PeaceClient:Peace-IRC:1.0.2") {
+        isTransitive = false
+    }
 
     compileOnly(libs.baritone)
 }

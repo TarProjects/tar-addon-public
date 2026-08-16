@@ -42,6 +42,11 @@ public class TarModule extends Module {
         }
     }
 
+    @Override
+    public void info(String message, Object... args) {
+        this.info(String.format(message, args));
+    }
+
     public void error(String text) {
         if (mc.world != null) {
             String msg = prefix + Formatting.GRAY + " [" + Formatting.LIGHT_PURPLE + Utils.nameToTitle(name) + Formatting.GRAY + "] " + Formatting.RED + text;

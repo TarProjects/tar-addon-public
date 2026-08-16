@@ -5,7 +5,7 @@ import net.minecraft.util.math.Box;
 
 public class RenderUtils {
     @SuppressWarnings("DuplicateBranchesInSwitch")
-    public static Box getBox(BlockPos pos, double progress, BreakAnimation animation) {
+    public static Box getBreakingAnimationBox(BlockPos pos, double progress, BreakAnimation animation) {
         double minX, minY, minZ, maxX, maxY, maxZ;
 
         switch (animation) {

@@ -113,6 +113,6 @@ public class BreakESP extends TarModule {
         Color side = ColorUtils.lerp(startSideColor.get(), endSideColor.get(), progress);
 
 
-        event.renderer.box(RenderUtils.getBox(pos, progress, animation.get()), side, line, shapeMode.get(), 0);
+        event.renderer.box(RenderUtils.getBreakingAnimationBox(pos, progress, animation.get()), side, line, shapeMode.get(), 0);
     }
 }

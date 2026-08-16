@@ -86,6 +86,14 @@ public class IRCModule extends TarModule {
         .build()
     );
 
+    private final Setting<Integer> range = sgGeneral.add(new IntSetting.Builder()
+        .name("range")
+        .description("Range of checking for block breaking")
+        .defaultValue(16)
+        .sliderRange(1, 32)
+        .build()
+    );
+
     private final Setting<ShapeMode> shapeMode = sgBlockBreaking.add(new EnumSetting.Builder<ShapeMode>()
         .name("shape-mode")
         .description("How the shapes are rendered.")
@@ -228,13 +236,12 @@ public class IRCModule extends TarModule {
         if (!blockBreaking.get()) return;
 
         for (Breaking breaking : breakingMap.values()) {
-            if (mc.player.squaredDistanceTo(breaking.blockPos.toCenterPos()) > 16*16) continue;
+            if (mc.player.squaredDistanceTo(breaking.blockPos.toCenterPos()) > range.get() * range.get()) continue;
             float progress = breaking.progress;
             Color line = ColorUtils.lerp(startLineColor.get(), endLineColor.get(), progress);
             Color side = ColorUtils.lerp(startSideColor.get(), endSideColor.get(), progress);
 
-
-            event.renderer.box(RenderUtils.getBox(breaking.blockPos, progress, animation.get()), side, line, shapeMode.get(), 0);
+            event.renderer.box(RenderUtils.getBreakingAnimationBox(breaking.blockPos, progress, animation.get()), side, line, shapeMode.get(), 0);
         }
     }
 
@@ -251,7 +258,8 @@ public class IRCModule extends TarModule {
             String name = player.getKey();
             BlockPos blockPos = player.getValue();
 
-            double dist = mc.player.getEntityPos().squaredDistanceTo(blockPos.getX(), blockPos.getY(), blockPos.getZ());
+            // horiz distance
+            double dist = mc.player.getEntityPos().squaredDistanceTo(blockPos.getX(), mc.player.getY(), blockPos.getZ());
 
             if (dist > minDistance.get()*minDistance.get() && dist < maxDistance.get()*maxDistance.get()) {
                 Vector3d pos = new Vector3d(blockPos.getX(), blockPos.getY(), blockPos.getZ());
@@ -296,10 +304,9 @@ public class IRCModule extends TarModule {
 
     private void sendEntities(ClientWorld world) {
         if (tickCounter % seenInterval.get() != 0) return;
-        long now = System.currentTimeMillis();
         for (PlayerEntity entity : world.getPlayers()) {
             BlockPos pos = entity.getBlockPos();
-            ircClient.sendPacket(new SeenEntityC2SPacket(entity.getName().getString(), fromMinecraft(pos), now));
+            ircClient.sendPacket(new SeenEntityC2SPacket(entity.getName().getString(), fromMinecraft(pos)));
         }
     }
 
@@ -336,6 +343,11 @@ public class IRCModule extends TarModule {
         }
 
         @Override
+        public void postLogin(IRCClientMain main) {
+            mc.execute(() -> info("Logged in as %s", main.getUsername()));
+        }
+
+        @Override
         public void onProgressUpdate(IRCClientMain main, String username, com.peace.util.@Nullable BlockPos pos, float breakingProgress) {
             if (pos == null) {
                 breakingMap.remove(username);
@@ -348,12 +360,12 @@ public class IRCModule extends TarModule {
 
         @Override
         public void onServerMessage(IRCClientMain ircClientMain, String s) {
-            mc.execute(() -> info(s));
+            mc.execute(() -> info("Server message: " + s));
         }
 
         @Override
         public void onIrcChat(IRCClientMain ircClientMain, String username, String message) {
-            mc.execute(() -> info(username + ": " + message));
+            mc.execute(() -> info("<%s> %s", username, message));
         }
 
         @Override
@@ -366,18 +378,13 @@ public class IRCModule extends TarModule {
         }
 
         @Override
-        public void tick(IRCClientMain ircClientMain) {
-
-        }
-
-        @Override
         public void onKick(IRCClientMain main, String reason) {
             mc.execute(() -> info("Kicked: " + reason));
         }
 
         @Override
         public void onDisconnect(IRCClientMain main) {
-            System.out.println("DISCONNECT!");
+            mc.execute(() -> info("Disconnected, toggling!"));
             if (module.isActive() && !disabling) module.toggle();
         }
     }

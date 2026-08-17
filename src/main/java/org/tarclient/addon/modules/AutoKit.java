@@ -1,12 +1,16 @@
 package org.tarclient.addon.modules;
 
+import meteordevelopment.meteorclient.events.entity.player.PlayerMoveEvent;
 import meteordevelopment.meteorclient.events.packets.PacketEvent;
 import meteordevelopment.meteorclient.events.world.TickEvent;
+import meteordevelopment.meteorclient.mixininterface.IVec3d;
 import meteordevelopment.meteorclient.settings.*;
 import meteordevelopment.meteorclient.utils.player.InvUtils;
 import meteordevelopment.orbit.EventHandler;
+import net.fabricmc.loader.impl.lib.sat4j.specs.IVec;
 import net.minecraft.component.DataComponentTypes;
 import net.minecraft.component.type.PotionContentsComponent;
+import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.effect.StatusEffect;
 import net.minecraft.entity.effect.StatusEffectInstance;
 import net.minecraft.item.Item;
@@ -15,6 +19,9 @@ import net.minecraft.item.SplashPotionItem;
 import net.minecraft.network.packet.c2s.play.ClientStatusC2SPacket;
 import net.minecraft.network.packet.c2s.play.PlayerInteractItemC2SPacket;
 import net.minecraft.util.Hand;
+import net.minecraft.util.math.Direction;
+import net.minecraft.util.math.Vec3d;
+import net.minecraft.util.shape.VoxelShape;
 import org.tarclient.addon.TarAddon;
 import org.tarclient.addon.TarModule;
 
@@ -25,8 +32,17 @@ import java.util.Set;
 public class AutoKit extends TarModule {
     private final SettingGroup sgGeneral = this.settings.getDefaultGroup();
 
-    private final Setting<Integer> height = sgGeneral.add(new IntSetting.Builder()
-        .name("height")
+
+    private final Setting<Integer> minHeight = sgGeneral.add(new IntSetting.Builder()
+        .name("min-height")
+        .description("What height triggers this module")
+        .defaultValue(120)
+        .sliderRange(0, 200)
+        .build()
+    );
+
+    private final Setting<Integer> maxHeight = sgGeneral.add(new IntSetting.Builder()
+        .name("max-height")
         .description("What height triggers this module")
         .defaultValue(120)
         .sliderRange(0, 200)
@@ -97,10 +113,36 @@ public class AutoKit extends TarModule {
         .build()
     );
 
+    private final Setting<Double> potionWalkSpeedX = sgGeneral.add(new DoubleSetting.Builder()
+        .name("potion-walk-speed-x")
+        .description("Walk speed before throwing potions. Blocks per second")
+        .defaultValue(5.7)
+        .sliderRange(-7, 7)
+        .build()
+    );
+
+    private final Setting<Double> potionWalkSpeedZ = sgGeneral.add(new DoubleSetting.Builder()
+        .name("potion-walk-speed-z")
+        .description("Walk speed before throwing potions. Blocks per second")
+        .defaultValue(0)
+        .sliderRange(-7, 7)
+        .build()
+    );
+
+    private final Setting<Double> minimumMove = sgGeneral.add(new DoubleSetting.Builder()
+        .name("minimum-move")
+        .description("Define minimum move distance before throwing")
+        .defaultValue(3)
+        .sliderRange(0, 6)
+        .build()
+    );
+
+
     private Stage stage;
     int ticks = 0;
     private final Set<StatusEffect> thrownPots = new HashSet<>();
     private final Set<Integer> movedSlots = new HashSet<>();
+    private Vec3d startMovePos;
 
     public AutoKit() {
         super(TarAddon.CATEGORY, "auto-kit", "Module to automatically call /kit. Designed for crystalpvp.cc, so might not work for other servers.");
@@ -112,6 +154,7 @@ public class AutoKit extends TarModule {
         ticks = -1;
         thrownPots.clear();
         movedSlots.clear();
+        startMovePos = null;
     }
 
     @EventHandler
@@ -124,14 +167,25 @@ public class AutoKit extends TarModule {
     }
 
     @EventHandler
+    private void onMove(PlayerMoveEvent event) {
+        if (stage == Stage.Wait && ticks == -1) return;
+        Vec3d movement = new Vec3d(0, event.movement.getY(), 0);
+        if (stage == Stage.WalkBeforePotion) {
+            movement = movement.add(potionWalkSpeedX.get() / 20, 0, potionWalkSpeedZ.get() / 20);
+        }
+        ((IVec3d) event.movement).meteor$set(movement);
+    }
+
+    @EventHandler
     private void onTick(TickEvent.Pre event) {
         if (mc.player == null || mc.world == null || mc.getNetworkHandler() == null || mc.interactionManager == null) return;
+        if (mc.getNetworkHandler().getServerInfo() == null) return;
 
         String world = mc.world.getRegistryKey().getValue().getPath();
-        if (!world.equals(worldName.get())) return;
-
-        if (mc.getNetworkHandler().getServerInfo() == null) return;
-        if (!mc.getNetworkHandler().getServerInfo().address.equals(server.get())) return;
+        if (!world.equals(worldName.get()) || !mc.getNetworkHandler().getServerInfo().address.equals(server.get())) {
+            reset();
+            return;
+        }
 
         switch (stage) {
             case Wait -> {
@@ -145,18 +199,18 @@ public class AutoKit extends TarModule {
                 ticks = actionDelay.get();
                 thrownPots.clear();
                 movedSlots.clear();
+                startMovePos = null;
             }
             case Kit -> {
                 if (ticks > 0) {
                     ticks--;
                     return;
                 }
-
-                if (mc.player.getY() > height.get()) {
+                int y = mc.player.getBlockY();
+                if (y <= maxHeight.get() && y >= minHeight.get()) {
                     if (potions.get().isEmpty() && xCarry.get().isEmpty()) {
                         mc.getNetworkHandler().sendChatCommand("kit " + kit.get());
-                        ticks = -1;
-                        stage = Stage.Wait;
+                        reset();
                     } else {
                         mc.getNetworkHandler().sendChatCommand("kit " + preKit.get());
                         // continue with XCarrying and getting stuff
@@ -190,6 +244,7 @@ public class AutoKit extends TarModule {
                     error("Failed to get all items!");
                     stage = Stage.Wait;
                     ticks = delay.get();
+                    return;
                 }
                 ticks++;
 
@@ -233,8 +288,35 @@ public class AutoKit extends TarModule {
 
 
                 if (slot >= 3) {
+                    if (potions.get().isEmpty()) {
+                        // skip potion steps!
+                        stage = Stage.ReKit;
+                        ticks = 0;
+                    } else {
+                        stage = Stage.WalkBeforePotion;
+                        startMovePos = mc.player.getEntityPos();
+                        ticks = 0;
+                    }
+                } else {
+                    ticks++;
+                }
+            }
+            case WalkBeforePotion -> {
+                if (mc.player.squaredDistanceTo(startMovePos) < minimumMove.get() * minimumMove.get()) {
+                    return;
+                }
+
+                if (ticks > kitWait.get()) {
+                    error("Failed to find an open position!");
+                    stage = Stage.Wait;
+                    ticks = delay.get();
+                    return;
+                }
+
+                if (mc.world.getEntitiesByClass(LivingEntity.class, mc.player.getBoundingBox(), entity -> entity != mc.player).isEmpty()) {
+                    // nobody colliding, switch to potion
                     stage = Stage.Potion;
-                    ticks = 0;
+                    ticks = -5;
                 } else {
                     ticks++;
                 }
@@ -274,12 +356,15 @@ public class AutoKit extends TarModule {
             case ReKit -> {
                 mc.getNetworkHandler().sendChatCommand("kit " + kit.get());
 
-                ticks = -1;
-                stage = Stage.Wait;
+                reset();
             }
         }
     }
 
+    public void reset() {
+        stage = Stage.Wait;
+        ticks = -1;
+    }
 
     public Iterable<StatusEffectInstance> getEffects(ItemStack stack) {
         if (!(stack.getItem() instanceof SplashPotionItem)) return List.of();
@@ -302,6 +387,7 @@ public class AutoKit extends TarModule {
         WaitForDeath,
         WaitForKit,
         XCarry,
+        WalkBeforePotion,
         Potion,
         ReKit
     }

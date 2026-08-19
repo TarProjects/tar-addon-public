@@ -2,11 +2,11 @@ package org.tarclient.addon.modules;
 
 import com.peace.client.IRCClientEventHandler;
 import com.peace.client.IRCClientMain;
-import com.peace.packets.c2s.BreakingC2SPacket;
-import com.peace.packets.c2s.ChatC2SPacket;
-import com.peace.packets.c2s.PrivateMessageC2SPacket;
-import com.peace.packets.c2s.SeenEntityC2SPacket;
+import com.peace.packets.c2s.*;
 import com.peace.packets.s2c.IRCUsersS2CPacket;
+import com.peace.util.IRCBlockPos;
+import com.peace.util.IRCInventory;
+import com.peace.util.IRCItemStack;
 import meteordevelopment.meteorclient.events.game.SendMessageEvent;
 import meteordevelopment.meteorclient.events.render.Render2DEvent;
 import meteordevelopment.meteorclient.events.render.Render3DEvent;
@@ -21,21 +21,20 @@ import meteordevelopment.meteorclient.utils.render.color.SettingColor;
 import meteordevelopment.orbit.EventHandler;
 import net.minecraft.client.world.ClientWorld;
 import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.network.packet.s2c.play.ChatSuggestionsS2CPacket;
+import net.minecraft.inventory.SimpleInventory;
+import net.minecraft.item.ItemStack;
+import net.minecraft.screen.ScreenHandlerType;
+import net.minecraft.text.Text;
 import net.minecraft.util.math.BlockPos;
 import org.joml.Vector3d;
 import org.jspecify.annotations.Nullable;
 import org.tarclient.addon.TarAddon;
 import org.tarclient.addon.TarModule;
 import org.tarclient.addon.events.SendTypedMessageEvent;
-import org.tarclient.addon.utils.ColorUtils;
-import org.tarclient.addon.utils.MiningUtils;
-import org.tarclient.addon.utils.RenderUtils;
+import org.tarclient.addon.utils.*;
 
 
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -52,13 +51,35 @@ public class IRCModule extends TarModule {
         .build()
     );
 
+    private final Setting<Boolean> sendBreaking = sgGeneral.add(new BoolSetting.Builder()
+        .name("send-block-breaking")
+        .description("Sends the current block breaking position and progress to server.")
+        .defaultValue(true)
+        .build()
+    );
+
+    private final Setting<Boolean> sendSeen = sgGeneral.add(new BoolSetting.Builder()
+        .name("send-seen")
+        .description("Sends seen entities to the server with entity data. Do not use this if you dont want your location to be known.")
+        .defaultValue(true)
+        .build()
+    );
+
     private final Setting<Integer> seenInterval = sgGeneral.add(new IntSetting.Builder()
         .name("seen-interval")
         .description("Interval to send seen packets at in ticks")
         .defaultValue(40)
-        .sliderRange(10, 100)
-        .min(10)
+        .sliderRange(1, 100)
+        .min(1)
         .max(100)
+        .visible(sendSeen::get)
+        .build()
+    );
+
+    private final Setting<Boolean> shareInventory = sgGeneral.add(new BoolSetting.Builder()
+        .name("share-inventory")
+        .description("Shares inventory on request")
+        .defaultValue(true)
         .build()
     );
 
@@ -321,27 +342,19 @@ public class IRCModule extends TarModule {
     }
 
     private void sendEntities(ClientWorld world) {
+        if (!sendSeen.get()) return;
         if (tickCounter % seenInterval.get() != 0) return;
         for (PlayerEntity entity : world.getPlayers()) {
             BlockPos pos = entity.getBlockPos();
-            ircClient.sendPacket(new SeenEntityC2SPacket(entity.getName().getString(), fromMinecraft(pos)));
+            ircClient.sendPacket(new SeenEntityC2SPacket(entity.getName().getString(), IRCUtils.blockPosToIrc(pos)));
         }
     }
 
     private void sendBreaking() {
+        if (!sendBreaking.get()) return;
         BlockPos mining = MiningUtils.getBreakingBlockPos();
-        BreakingC2SPacket packet = new BreakingC2SPacket(fromMinecraft(mining), (float) MiningUtils.getBreakingProgress());
+        BreakingC2SPacket packet = new BreakingC2SPacket(IRCUtils.blockPosToIrc(mining), (float) MiningUtils.getBreakingProgress());
         ircClient.sendPacket(packet);
-    }
-
-    private com.peace.util.BlockPos fromMinecraft(BlockPos pos) {
-        if (pos == null) return null;
-        return new com.peace.util.BlockPos(pos.getX(), pos.getY(), pos.getZ());
-    }
-
-    private BlockPos toMinecraft(com.peace.util.BlockPos pos) {
-        if (pos == null) return null;
-        return new BlockPos(pos.getX(), pos.getY(), pos.getZ());
     }
 
     @EventHandler
@@ -383,7 +396,7 @@ public class IRCModule extends TarModule {
         }
 
         @Override
-        public void onProgressUpdate(IRCClientMain main, String username, com.peace.util.@Nullable BlockPos pos, float breakingProgress) {
+        public void onProgressUpdate(IRCClientMain main, String username, @Nullable IRCBlockPos pos, float breakingProgress) {
             if (pos == null) {
                 breakingMap.remove(username);
             } else {
@@ -407,6 +420,35 @@ public class IRCModule extends TarModule {
         public void onPrivateMessage(IRCClientMain main, String sender, String message, boolean isOwnMessage) {
             String msg = isOwnMessage ? "to %s: %s" : "%s says: %s";
             mc.execute(() -> info(msg, sender, message));
+        }
+
+        @Override
+        public void onReceiveInventory(IRCClientMain main, String username, IRCInventory inventory) {
+            mc.execute(() -> {
+                if (mc.player == null) return;
+                OtherPlayerInventoryHandler handler = new OtherPlayerInventoryHandler(ScreenHandlerType.GENERIC_9X6, 0, mc.player.getInventory(), module.toInventory(inventory), 6);
+                OtherPlayerInventory invScreen = new OtherPlayerInventory(handler, mc.player.getInventory(), Text.of("IRC inventory: " + username));
+                mc.setScreen(invScreen);
+            });
+        }
+
+        @Override
+        public void onServerRequestInventory(IRCClientMain main, int id) {
+            mc.execute(() -> {
+                if (mc.player == null) return;
+                if (!shareInventory.get()) return;
+
+                Map<Integer, IRCItemStack> stackMap = new HashMap<>();
+
+                for (int i = 0; i < mc.player.getInventory().size(); i++) {
+                    // loop through inv
+                    ItemStack stack = mc.player.getInventory().getStack(i);
+                    if (stack.isEmpty()) continue;
+                    stackMap.put(i, IRCUtils.itemStackToIRC(stack));
+                }
+
+                main.sendPacket(new SendPlayerInventoryC2SPacket(id, new IRCInventory(stackMap)));
+            });
         }
 
         @Override
@@ -438,11 +480,11 @@ public class IRCModule extends TarModule {
         }
 
         @Override
-        public void onPositionReceive(IRCClientMain main, String username, com.peace.util.BlockPos position) {
+        public void onPositionReceive(IRCClientMain main, String username, IRCBlockPos position) {
             if (position == null) {
                 positionMap.remove(username);
             } else {
-                positionMap.put(username, toMinecraft(position));
+                positionMap.put(username, IRCUtils.blockPosFromIrc(position));
             }
         }
 
@@ -455,6 +497,26 @@ public class IRCModule extends TarModule {
         public void onDisconnect(IRCClientMain main) {
             mc.execute(() -> info("Disconnected, toggling!"));
             if (module.isActive() && !disabling) module.toggle();
+        }
+    }
+
+    private SimpleInventory toInventory(IRCInventory ircInventory) {
+        if (mc.player == null) return null;
+        try {
+            SimpleInventory inventory = new SimpleInventory(9 * 6);
+
+            // reverse scan to prevent out of bounds
+            for (int i = 0; i <= mc.player.getInventory().size(); i++) {
+                IRCItemStack stack = ircInventory.getItemStackMap().get(i);
+                if (stack == null) continue;
+                ItemStack itemStack = IRCUtils.itemStackFromIRC(stack);
+                if (itemStack != null) {
+                    inventory.setStack(i, itemStack);
+                }
+            }
+            return inventory;
+        } catch (Exception e) {
+            return null;
         }
     }
 

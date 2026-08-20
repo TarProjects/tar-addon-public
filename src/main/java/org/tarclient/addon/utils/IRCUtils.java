@@ -1,7 +1,10 @@
 package org.tarclient.addon.utils;
 
 import com.peace.util.IRCBlockPos;
+import com.peace.util.IRCEquipment;
 import com.peace.util.IRCItemStack;
+import net.minecraft.entity.EquipmentSlot;
+import net.minecraft.entity.LivingEntity;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.registry.Registries;
@@ -34,5 +37,19 @@ public class IRCUtils {
         } catch (Exception e) {
             return ItemStack.EMPTY;
         }
+    }
+
+    public static IRCEquipment entityToIRCEquipment(LivingEntity entity) {
+        return new IRCEquipment(slotToIRC(entity, EquipmentSlot.MAINHAND),
+            slotToIRC(entity, EquipmentSlot.OFFHAND),
+            slotToIRC(entity, EquipmentSlot.HEAD),
+            slotToIRC(entity, EquipmentSlot.CHEST),
+            slotToIRC(entity, EquipmentSlot.LEGS),
+            slotToIRC(entity, EquipmentSlot.FEET));
+    }
+
+    private static IRCItemStack slotToIRC(LivingEntity entity, EquipmentSlot slot) {
+        ItemStack stack = entity.getEquippedStack(slot);
+        return stack.isEmpty() ? null : itemStackToIRC(stack);
     }
 }

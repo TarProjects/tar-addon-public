@@ -5,6 +5,7 @@ import com.peace.client.IRCClientMain;
 import com.peace.packets.c2s.*;
 import com.peace.packets.s2c.IRCUsersS2CPacket;
 import com.peace.util.IRCBlockPos;
+import com.peace.util.IRCEquipment;
 import com.peace.util.IRCInventory;
 import com.peace.util.IRCItemStack;
 import meteordevelopment.meteorclient.events.game.SendMessageEvent;
@@ -180,6 +181,13 @@ public class IRCModule extends TarModule {
         .build()
     );
 
+    private final Setting<Boolean> renderHealth = sgNametags.add(new BoolSetting.Builder()
+        .name("render-health")
+        .description("Renders health to the nametags")
+        .defaultValue(true)
+        .build()
+    );
+
     private final Setting<Integer> minDistance = sgNametags.add(new IntSetting.Builder()
         .name("min-distance")
         .description("Minimum distance to render nametags at")
@@ -229,7 +237,7 @@ public class IRCModule extends TarModule {
 
     public final Set<String> onlineIRCUsers = ConcurrentHashMap.newKeySet();
     private final Map<String, Breaking> breakingMap = new ConcurrentHashMap<>();
-    private final Map<String, BlockPos> positionMap = new ConcurrentHashMap<>();
+    private final Map<String, PlayerData> playerMap = new ConcurrentHashMap<>();
     boolean disabling;
 
     int tickCounter;
@@ -293,9 +301,9 @@ public class IRCModule extends TarModule {
         boolean shadow = true;
 
 
-        for (Map.Entry<String, BlockPos> player : positionMap.entrySet()) {
+        for (Map.Entry<String, PlayerData> player : playerMap.entrySet()) {
             String name = player.getKey();
-            BlockPos blockPos = player.getValue();
+            BlockPos blockPos = player.getValue().pos();
 
             // horiz distance
             double dist = mc.player.getEntityPos().squaredDistanceTo(blockPos.getX(), mc.player.getY(), blockPos.getZ());
@@ -309,9 +317,20 @@ public class IRCModule extends TarModule {
                 NametagUtils.begin(pos, event.drawContext);
 
                 String distanceText = String.format(" %.1fm", Math.sqrt(dist));
+
+                float health = -1;
+                if (player.getValue().health != null) health = player.getValue().health();
+
+                String healthText = String.format(" %.1f", health);
+
                 double nameWidth = text.getWidth(name, shadow);
                 double distWidth = text.getWidth(distanceText, shadow);
+                double healthWidth = text.getWidth(healthText, shadow);
+
                 double totalWidth = nameWidth + distWidth;
+
+                if (renderHealth.get()) totalWidth += healthWidth;
+
                 double height = text.getHeight(shadow);
 
                 // Background
@@ -324,6 +343,7 @@ public class IRCModule extends TarModule {
                 double x = -totalWidth / 2;
                 double y = -height;
                 x = text.render(name, x, y, nameColor.get(), shadow);
+                if (health != -1 && renderHealth.get()) x = text.render(healthText, x, y, Color.PINK, shadow);
                 text.render(distanceText, x, y, distanceColor.get(), shadow);
                 text.end();
 
@@ -346,7 +366,7 @@ public class IRCModule extends TarModule {
         if (tickCounter % seenInterval.get() != 0) return;
         for (PlayerEntity entity : world.getPlayers()) {
             BlockPos pos = entity.getBlockPos();
-            ircClient.sendPacket(new SeenEntityC2SPacket(entity.getName().getString(), IRCUtils.blockPosToIrc(pos)));
+            ircClient.sendPacket(new SeenEntityC2SPacket(entity.getName().getString(), IRCUtils.blockPosToIrc(pos), entity.getHealth() + entity.getAbsorptionAmount(), IRCUtils.entityToIRCEquipment(entity)));
         }
     }
 
@@ -480,11 +500,12 @@ public class IRCModule extends TarModule {
         }
 
         @Override
-        public void onPositionReceive(IRCClientMain main, String username, IRCBlockPos position) {
+        public void onPositionReceive(IRCClientMain main, String username, @Nullable IRCBlockPos position, @Nullable Float health, @Nullable IRCEquipment equipment) {
             if (position == null) {
-                positionMap.remove(username);
+                playerMap.remove(username);
             } else {
-                positionMap.put(username, IRCUtils.blockPosFromIrc(position));
+                BlockPos pos = IRCUtils.blockPosFromIrc(position);
+                playerMap.put(username, new PlayerData(pos, health));
             }
         }
 
@@ -521,4 +542,5 @@ public class IRCModule extends TarModule {
     }
 
     public record Breaking(BlockPos blockPos, float progress){}
+    public record PlayerData(BlockPos pos, Float health){}
 }

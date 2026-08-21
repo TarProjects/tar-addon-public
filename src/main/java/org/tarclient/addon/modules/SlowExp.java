@@ -8,15 +8,20 @@ import meteordevelopment.meteorclient.utils.player.InvUtils;
 import meteordevelopment.meteorclient.utils.player.Rotations;
 import meteordevelopment.meteorclient.utils.player.SlotUtils;
 import meteordevelopment.orbit.EventHandler;
+import net.minecraft.component.DataComponentTypes;
 import net.minecraft.enchantment.Enchantments;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
 import net.minecraft.network.packet.c2s.play.PlayerInteractItemC2SPacket;
+import net.minecraft.registry.Registries;
 import net.minecraft.util.math.Box;
 import net.minecraft.util.math.Vec3d;
 import org.tarclient.addon.TarAddon;
 import org.tarclient.addon.TarModule;
+import org.tarclient.addon.utils.MioUtils;
+
+import java.util.List;
 
 public class SlowExp extends TarModule {
     private final SettingGroup sgGeneral = this.settings.getDefaultGroup();
@@ -106,7 +111,50 @@ public class SlowExp extends TarModule {
         .build()
     );
 
+    private final Setting<Offhand> offhand = sgGeneral.add(new EnumSetting.Builder<Offhand>()
+        .name("offhand")
+        .description("How should we use the offhand?")
+        .defaultValue(Offhand.Never)
+        .build()
+    );
+
+    private final Setting<Integer> offhandPercentage = sgGeneral.add(new IntSetting.Builder()
+        .name("offhand-percentage")
+        .description("Mends the offhand stack to this percentage")
+        .defaultValue(30)
+        .sliderRange(0, 100)
+        .visible(() -> offhand.get() != Offhand.Never)
+        .build()
+    );
+
+    private final Setting<Double> offhandMinHp = sgGeneral.add(new DoubleSetting.Builder()
+        .name("offhand-min-hp")
+        .description("Min health for replacing offhand")
+        .defaultValue(20)
+        .sliderRange(0, 20)
+        .visible(() -> offhand.get() == Offhand.Toggle)
+        .build()
+    );
+
+    public final Setting<List<String>> toCustomOffhand = sgGeneral.add(new StringListSetting.Builder()
+        .name("to-custom-offhand")
+        .description("How to get to custom offhand")
+        .defaultValue("offhand Custom clear", "offhand Custom <armor>", "offhand Item custom")
+        .visible(() -> offhand.get() == Offhand.Custom)
+        .build()
+    );
+
+    public final Setting<List<String>> fromCustomOffhand = sgGeneral.add(new StringListSetting.Builder()
+        .name("from-custom-offhand")
+        .description("How to get back from custom offhand")
+        .defaultValue("offhand Custom clear", "offhand Item crystal")
+        .visible(() -> offhand.get() == Offhand.Custom)
+        .build()
+    );
+
     private int tickCounter;
+    private boolean offhandState;
+    private boolean hasCustom;
 
     public SlowExp() {
         super(TarAddon.CATEGORY, "slow-exp", "Alternative autoexp to get <= 88% of the xp in holes, without depending on player id");
@@ -115,6 +163,21 @@ public class SlowExp extends TarModule {
     @Override
     public void onActivate() {
         tickCounter = 0;
+
+        // internal state for offhand options
+        offhandState = true;
+        hasCustom = false;
+    }
+
+    @Override
+    public void onDeactivate() {
+        if (!offhandState) {
+            MioUtils.toggleOffhand(true);
+        }
+
+        if (hasCustom) {
+            fromCustom();
+        }
     }
 
     @EventHandler
@@ -128,14 +191,16 @@ public class SlowExp extends TarModule {
             return;
         }
 
-        if (!mc.player.isOnGround()) {
-            reset();
-            return;
-        }
+        handleOffhand(mc.player);
 
         if (!shouldMend(mc.player)) {
             info("Hit durability cap!");
             this.toggle();
+            return;
+        }
+
+        if (!mc.player.isOnGround()) {
+            reset();
             return;
         }
 
@@ -222,21 +287,99 @@ public class SlowExp extends TarModule {
 
     private boolean shouldMend(PlayerEntity player) {
         if (stopAt.get() == 0) return true;
+        // force mend
+        if (!offhandState || hasCustom) return true;
 
         for (int i = 0; i < 4; i++) {
             int slot = SlotUtils.ARMOR_START + i;
             ItemStack stack = player.getInventory().getStack(slot);
+            if (stack.isEmpty()) continue;
 
-            int maxDmg = stack.getMaxDamage();
-            if (maxDmg == 0 || !Utils.hasEnchantment(stack, Enchantments.MENDING)) continue; // fallback or no mending
+            if (!Utils.hasEnchantment(stack, Enchantments.MENDING)) continue;
 
-            int dmg = stack.getDamage();
-            double percentage = (double) (maxDmg - dmg) / maxDmg;
+            double percentage = getPercentage(stack);
 
             if (percentage * 100 < stopAt.get()) return true;
         }
 
         return false;
+    }
+
+    private double getPercentage(ItemStack stack) {
+        int maxDmg = stack.getMaxDamage();
+
+        int dmg = stack.getDamage();
+        return (double) (maxDmg - dmg) / maxDmg;
+    }
+
+    private void handleOffhand(PlayerEntity player) {
+        switch (offhand.get()) {
+            case Toggle -> {
+                if (offhandState) {
+                    for (int i = 0; i < 36; i++) {
+                        ItemStack stack = player.getInventory().getStack(i);
+                        if (!validArmor(stack) || invalidPercentageOffhand(stack)) continue;
+
+                        MioUtils.toggleOffhand(false);
+                        offhandState = false;
+
+                        InvUtils.quickSwap().from(i).toOffhand();
+                        break;
+                    }
+                } else {
+                    ItemStack offhandStack = player.getInventory().getStack(SlotUtils.OFFHAND);
+                    if (player.getHealth() < offhandMinHp.get() || (validArmor(offhandStack) && invalidPercentageOffhand(offhandStack))) {
+                        MioUtils.toggleOffhand(true);
+                        offhandState = true;
+                    }
+                }
+            }
+
+            case Custom -> {
+                if (!hasCustom) {
+                    for (int i = 0; i < 36; i++) {
+                        ItemStack stack = player.getInventory().getStack(i);
+                        if (!validArmor(stack) || invalidPercentageOffhand(stack)) continue;
+
+                        toCustom(stack);
+                        hasCustom = true;
+                        break;
+                    }
+                } else {
+                    ItemStack offhandStack = player.getInventory().getStack(SlotUtils.OFFHAND);
+                    if (validArmor(offhandStack) && invalidPercentageOffhand(offhandStack)) {
+                        fromCustom();
+                        hasCustom = false;
+                    }
+                }
+            }
+
+        }
+    }
+
+    private boolean validArmor(ItemStack stack) {
+        if (stack.isEmpty()) return false;
+        if (!Utils.hasEnchantment(stack, Enchantments.MENDING)) return false;
+        // strict armor check
+        return stack.getComponents().contains(DataComponentTypes.EQUIPPABLE);
+    }
+
+    private boolean invalidPercentageOffhand(ItemStack stack) {
+        double percentage = getPercentage(stack);
+        return !(percentage * 100 <= offhandPercentage.get());
+    }
+
+    private void toCustom(ItemStack stack) {
+        String itemName = Registries.ITEM.getId(stack.getItem()).getPath();
+        for (String command : toCustomOffhand.get()) {
+            if (!command.isEmpty()) MioUtils.sendMioMessage(command.replace("<armor>", itemName));
+        }
+    }
+
+    private void fromCustom() {
+        for (String command : fromCustomOffhand.get()) {
+            if (!command.isEmpty()) MioUtils.sendMioMessage(command);
+        }
     }
 
     private State getCycle() {
@@ -294,6 +437,12 @@ public class SlowExp extends TarModule {
         None,
         All,
         Once
+    }
+
+    private enum Offhand {
+        Never,
+        Toggle,
+        Custom
     }
 
     private record State(int cycle, int count) {}

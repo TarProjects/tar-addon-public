@@ -250,10 +250,8 @@ public class IRCModule extends TarModule {
 
     @Override
     public void onActivate() {
-        System.out.println("activate called :)");
         if (mc.player == null || mc.getNetworkHandler() == null) return;
         if (mc.isInSingleplayer() || mc.getNetworkHandler().getServerInfo() == null) {
-            System.out.println("Issue with singleplayer");
             error("IRC does not work in singleplayer");
             this.toggle();
             return;
@@ -516,8 +514,10 @@ public class IRCModule extends TarModule {
 
         @Override
         public void onDisconnect(IRCClientMain main) {
-            mc.execute(() -> info("Disconnected, toggling!"));
-            if (module.isActive() && !disabling) module.toggle();
+            if (module.isActive() && !disabling) {
+                mc.execute(() -> info("Disconnected, toggling!"));
+                module.toggle();
+            }
         }
     }
 

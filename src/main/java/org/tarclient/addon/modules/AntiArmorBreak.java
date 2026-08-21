@@ -8,9 +8,13 @@ import meteordevelopment.meteorclient.utils.player.SlotUtils;
 import meteordevelopment.orbit.EventHandler;
 import net.minecraft.enchantment.Enchantments;
 import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import org.tarclient.addon.TarAddon;
 import org.tarclient.addon.TarModule;
+
+import java.util.HashMap;
+import java.util.Map;
 
 
 public class AntiArmorBreak extends TarModule {
@@ -44,10 +48,12 @@ public class AntiArmorBreak extends TarModule {
     }
 
     int cooldown;
+    private final Map<Item, Integer> unequippedArmorDmg = new HashMap<>();
 
     @Override
     public void onActivate() {
         cooldown = 0;
+        unequippedArmorDmg.clear();
     }
 
     @EventHandler
@@ -84,7 +90,14 @@ public class AntiArmorBreak extends TarModule {
             double durability = (double) (maxDmg - dmg) / maxDmg;
 
             if (durability * 100 < percentage.get() && mc.player.currentScreenHandler.getCursorStack().isEmpty()) {
+                Integer lastSavedDmg = unequippedArmorDmg.get(stack.getItem());
+                if (lastSavedDmg != null && lastSavedDmg >= dmg) {
+                    continue; // user choice, allow item to be saved
+                }
+
                 if (warn.get()) info(String.format("Trying to unequip armor with %d%%!", Math.round(durability * 100)));
+
+                unequippedArmorDmg.put(stack.getItem(), dmg);
 
                 if (hasInventorySpace(mc.player)) {
                     InvUtils.shiftClick().slotArmor(i);
@@ -93,6 +106,8 @@ public class AntiArmorBreak extends TarModule {
                 }
                 cooldown = delay.get();
                 return;
+            } else {
+                unequippedArmorDmg.remove(stack.getItem());
             }
         }
     }

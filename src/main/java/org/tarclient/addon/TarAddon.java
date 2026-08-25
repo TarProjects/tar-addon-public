@@ -90,8 +90,10 @@ public class TarAddon extends MeteorAddon {
         Modules.get().add(new CrawlESP());
         Modules.get().add(new CrystalWaster());
         Modules.get().add(new DropKit());
+        Modules.get().add(new FakeFly());
         Modules.get().add(new Flattener());
         Modules.get().add(new GridFiller());
+        Modules.get().add(new GrimSpeed());
         Modules.get().add(new HeadBurrow());
         Modules.get().add(new IAmAFailure());
         Modules.get().add(new InfiniteNameTags());
@@ -128,6 +130,7 @@ public class TarAddon extends MeteorAddon {
 
         Commands.add(new IRCCommand());
         Commands.add(new KitCommand());
+        Commands.add(new MioCommand());
         Commands.add(new ResetChangesCommand());
         Commands.add(new SetPoseCommand());
         Commands.add(new TPCommand());

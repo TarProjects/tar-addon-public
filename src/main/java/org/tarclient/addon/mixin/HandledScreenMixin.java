@@ -91,7 +91,7 @@ public class HandledScreenMixin<T extends ScreenHandler> {
         VirtualHotbar virtualHotbar = Modules.get().get(VirtualHotbar.class);
         if (virtualHotbar != null && virtualHotbar.isActive()) {
             if (original.id >= 36 && original.id < 45) {
-                int virtual = VirtualHotbarUtils.realToVisual(original.id - 36);
+                int virtual = VirtualHotbarUtils.visualToReal(original.id - 36);
                 return screen.getScreenHandler().getSlot(virtual + 36);
             }
         }

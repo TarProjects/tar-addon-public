@@ -1,6 +1,5 @@
 package org.tarclient.addon.settings.impl;
 
-import com.google.common.collect.Multimap;
 import meteordevelopment.meteorclient.gui.GuiTheme;
 import meteordevelopment.meteorclient.gui.renderer.GuiRenderer;
 import meteordevelopment.meteorclient.gui.utils.CharFilter;

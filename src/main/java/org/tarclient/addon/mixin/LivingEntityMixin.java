@@ -41,7 +41,7 @@ public class LivingEntityMixin {
 
     @Inject(method = "travel", at = @At("HEAD"))
     private void onTravel(Vec3d movementInput, CallbackInfo ci) {
-        LivingEntity entity = ((LivingEntity)((Object) this));
+        LivingEntity entity = ((LivingEntity) ((Object) this));
         if (entity == null) return;
         oldYaw = entity.getYaw();
         oldPitch = entity.getPitch();
@@ -54,7 +54,7 @@ public class LivingEntityMixin {
 
     @Inject(method = "travel", at = @At("RETURN"))
     private void onTravelPost(Vec3d movementInput, CallbackInfo ci) {
-        LivingEntity entity = ((LivingEntity)((Object) this));
+        LivingEntity entity = ((LivingEntity) ((Object) this));
         if (entity == null) return;
         entity.setYaw(oldYaw);
         entity.setPitch(oldPitch);

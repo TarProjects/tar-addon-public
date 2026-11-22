@@ -20,7 +20,8 @@ public class TarModule extends Module {
 
     // override default uses, and instead send always
     @Override
-    public void sendToggledMsg() {}
+    public void sendToggledMsg() {
+    }
 
     public void tar$sendToggledMsg() {
         if (Config.get().chatFeedback.get() && chatFeedback && mc.world != null) {

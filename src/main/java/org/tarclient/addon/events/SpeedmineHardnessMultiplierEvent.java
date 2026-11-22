@@ -7,7 +7,7 @@ public class SpeedmineHardnessMultiplierEvent extends Cancellable {
     private static final SpeedmineHardnessMultiplierEvent INSTANCE = new SpeedmineHardnessMultiplierEvent();
 
     // r/namesoundalikes -> markiplier 🔥
-    public float  multiplier;
+    public float multiplier;
 
     public static SpeedmineHardnessMultiplierEvent get() {
         INSTANCE.setCancelled(false);

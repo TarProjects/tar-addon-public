@@ -30,8 +30,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
- * @concept levent
  * @author nullable
+ * @concept levent
  */
 public class BlinkESP extends TarModule {
     private final SettingGroup sgDetection = settings.createGroup("Detection");
@@ -191,7 +191,7 @@ public class BlinkESP extends TarModule {
                         if (!resetOnCorner.get() || !isAgainstWall(player)) {
                             state.stationarySprintCycles++;
                         }
-                    } else if (resetCounter.get()){
+                    } else if (resetCounter.get()) {
                         state.stationarySprintCycles = 0;
                     }
 

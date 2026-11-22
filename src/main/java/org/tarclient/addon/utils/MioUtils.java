@@ -103,6 +103,7 @@ public class MioUtils extends GenericUtil {
             }
         }
     }
+
     /**
      * Helper method to toggle notifications if it should
      */

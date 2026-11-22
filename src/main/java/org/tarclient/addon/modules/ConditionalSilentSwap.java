@@ -14,8 +14,8 @@ import org.tarclient.addon.utils.MioUtils;
 import java.util.List;
 
 /**
- * @concept hekt
  * @author nullable
+ * @concept hekt
  */
 public class ConditionalSilentSwap extends TarModule {
     private final SettingGroup sgGeneral = this.settings.getDefaultGroup();

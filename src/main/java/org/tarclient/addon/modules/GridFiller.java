@@ -27,8 +27,8 @@ import java.util.*;
 import static meteordevelopment.meteorclient.utils.world.BlockUtils.getClosestPlaceSide;
 
 /**
- * @concept levent
  * @author nullable
+ * @concept levent
  */
 public class GridFiller extends TarModule {
     private final SettingGroup sgGeneral = this.settings.getDefaultGroup();

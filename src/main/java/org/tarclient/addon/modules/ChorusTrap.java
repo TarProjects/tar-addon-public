@@ -20,7 +20,10 @@ import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.Items;
 import net.minecraft.network.packet.s2c.play.PlayerPositionLookS2CPacket;
 import net.minecraft.sound.SoundEvents;
-import net.minecraft.util.math.*;
+import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.Box;
+import net.minecraft.util.math.Direction;
+import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.WorldView;
 import org.tarclient.addon.TarAddon;
 import org.tarclient.addon.TarModule;
@@ -179,7 +182,8 @@ public class ChorusTrap extends TarModule {
 
         if (!instant.get()) return; // instant logic from here on out
 
-        if (mc.player.getEyePos().squaredDistanceTo(vec) > targetRange.get() * targetRange.get()) return; // cheap distance
+        if (mc.player.getEyePos().squaredDistanceTo(vec) > targetRange.get() * targetRange.get())
+            return; // cheap distance
 
         if (cooldown > 0) {
             cooldown--;
@@ -240,7 +244,8 @@ public class ChorusTrap extends TarModule {
                 continue;
             }
 
-            if (mc.player.getEyePos().squaredDistanceTo(vec) > targetRange.get() * targetRange.get()) continue; // cheap distance check
+            if (mc.player.getEyePos().squaredDistanceTo(vec) > targetRange.get() * targetRange.get())
+                continue; // cheap distance check
 
             addPlacePositions(mc.world, feetPos, targetBox, mc.player.getEyePos());
         }
@@ -254,7 +259,8 @@ public class ChorusTrap extends TarModule {
         int placed = 0;
 
         for (BlockPos blockPos : placePositions) {
-            if (mc.player.getEyePos().squaredDistanceTo(blockPos.toCenterPos()) > range.get() * range.get()) continue; // cheap distance check
+            if (mc.player.getEyePos().squaredDistanceTo(blockPos.toCenterPos()) > range.get() * range.get())
+                continue; // cheap distance check
             if (obby.count() - placed <= 0) break;
             if (!ignoreBpt && placed >= blocksPerTick.get()) break;
 
@@ -370,5 +376,6 @@ public class ChorusTrap extends TarModule {
         }
     }
 
-    public record ChorusPosition(Vec3d pos, long timeOfTeleport) {}
+    public record ChorusPosition(Vec3d pos, long timeOfTeleport) {
+    }
 }

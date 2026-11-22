@@ -174,7 +174,7 @@ public class AntiExp extends TarModule {
 
         Entity entity = mc.world.getEntityById(packet.getEntityId());
         if (!(entity instanceof ProjectileEntity projectile)) return;
-        if (mc.player.squaredDistanceTo(projectile) > 6*6) return; // cheap skip
+        if (mc.player.squaredDistanceTo(projectile) > 6 * 6) return; // cheap skip
 
         if (!(projectile.getOwner() instanceof PlayerEntity owner) || owner == mc.player) return;
         if (!Friends.get().shouldAttack(owner)) return;

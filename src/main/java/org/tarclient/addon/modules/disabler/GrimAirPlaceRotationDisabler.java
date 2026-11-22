@@ -5,7 +5,7 @@ import meteordevelopment.meteorclient.utils.world.BlockUtils;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
 import net.minecraft.client.MinecraftClient;
-import net.minecraft.item.*;
+import net.minecraft.item.ItemStack;
 import net.minecraft.network.packet.c2s.play.PlayerInteractBlockC2SPacket;
 import net.minecraft.util.Hand;
 import net.minecraft.util.hit.BlockHitResult;
@@ -44,7 +44,7 @@ public class GrimAirPlaceRotationDisabler extends DisablerMode {
                     placePosition = placePosition.offset(packet.getBlockHitResult().getSide());
                 }
 
-                BlockHitResult bhr = new BlockHitResult(placePosition.toCenterPos(), Direction.UP, placePosition,false);
+                BlockHitResult bhr = new BlockHitResult(placePosition.toCenterPos(), Direction.UP, placePosition, false);
                 // resend
                 event.sendSilently(new PlayerInteractBlockC2SPacket(packet.getHand(), bhr, packet.getSequence()));
             }

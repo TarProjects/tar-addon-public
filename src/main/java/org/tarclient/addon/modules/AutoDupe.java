@@ -2,7 +2,9 @@ package org.tarclient.addon.modules;
 
 import meteordevelopment.meteorclient.events.world.TickEvent;
 import meteordevelopment.meteorclient.settings.*;
-import meteordevelopment.meteorclient.utils.player.*;
+import meteordevelopment.meteorclient.utils.player.FindItemResult;
+import meteordevelopment.meteorclient.utils.player.InvUtils;
+import meteordevelopment.meteorclient.utils.player.Rotations;
 import meteordevelopment.orbit.EventHandler;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.decoration.ItemFrameEntity;
@@ -10,7 +12,7 @@ import net.minecraft.item.Item;
 import net.minecraft.item.Items;
 import net.minecraft.network.packet.c2s.play.PlayerInteractEntityC2SPacket;
 import net.minecraft.util.Hand;
-import net.minecraft.util.math.*;
+import net.minecraft.util.math.Vec3d;
 import org.tarclient.addon.TarAddon;
 import org.tarclient.addon.TarModule;
 
@@ -139,5 +141,6 @@ public class AutoDupe extends TarModule {
             .collect(Collectors.toList());
     }
 
-    private record FrameState(boolean shouldHaveItem, int startTick) {}
+    private record FrameState(boolean shouldHaveItem, int startTick) {
+    }
 }

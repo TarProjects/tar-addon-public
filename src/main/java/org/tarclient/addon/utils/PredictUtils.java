@@ -103,7 +103,7 @@ public class PredictUtils {
                 return pos.add(adjusted);
             }
 
-            float[] stepHeights = collectStepHeights(groundBox, collisions, (float)adjusted.y, (float)stepHeight);
+            float[] stepHeights = collectStepHeights(groundBox, collisions, (float) adjusted.y, (float) stepHeight);
             Vec3d bestStep = adjusted;
 
             for (float yOffset : stepHeights) {
@@ -125,7 +125,7 @@ public class PredictUtils {
         for (VoxelShape shape : collisions) {
             DoubleList yPoints = shape.getPointPositions(Direction.Axis.Y);
             for (double y : yPoints) {
-                float g = (float)(y - box.minY);
+                float g = (float) (y - box.minY);
                 if (g >= 0 && g != currentY && g <= stepHeight) {
                     floatSet.add(g);
                 }

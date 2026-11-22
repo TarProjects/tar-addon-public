@@ -13,10 +13,18 @@ public class DisablerMode {
         this.module = module;
     }
 
-    public void onActivate() {}
-    public void onDeactivate() {}
+    public void onActivate() {
+    }
 
-    public void onTick() {}
-    public void onPacketSend(PacketEvent.Send event) {}
-    public void onPacketReceive(PacketEvent.Receive event) {}
+    public void onDeactivate() {
+    }
+
+    public void onTick() {
+    }
+
+    public void onPacketSend(PacketEvent.Send event) {
+    }
+
+    public void onPacketReceive(PacketEvent.Receive event) {
+    }
 }

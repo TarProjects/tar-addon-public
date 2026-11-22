@@ -19,8 +19,8 @@ import org.tarclient.addon.events.ModifyRotationCameraPosEvent;
 import org.tarclient.addon.utils.TarPlayerUtils;
 
 /**
- * @concept levent
  * @author nullable
+ * @concept levent
  */
 public class CrystalWaster extends TarModule {
     private final SettingGroup sgGeneral = this.settings.getDefaultGroup();

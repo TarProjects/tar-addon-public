@@ -19,22 +19,22 @@ public class IRCCommand extends Command {
     @Override
     public void build(LiteralArgumentBuilder<CommandSource> builder) {
         builder.then(literal("msg")
-                .then(argument("player-entry", PlayerListEntryArgumentType.create())
-                    .then(argument("message", StringArgumentType.greedyString()).executes(context -> {
-                        PlayerListEntry entry = context.getArgument("player-entry", PlayerListEntry.class);
-                        String target = entry.getProfile().name();
-                        String message = context.getArgument("message", String.class);
+            .then(argument("player-entry", PlayerListEntryArgumentType.create())
+                .then(argument("message", StringArgumentType.greedyString()).executes(context -> {
+                    PlayerListEntry entry = context.getArgument("player-entry", PlayerListEntry.class);
+                    String target = entry.getProfile().name();
+                    String message = context.getArgument("message", String.class);
 
-                        IRCModule module = getIrc();
-                        if (!module.isActive() || module.ircClient == null) {
-                            error("IRC not active!");
-                            return SINGLE_SUCCESS;
-                        }
-                        module.ircClient.sendPacket(new PrivateMessageC2SPacket(target, message));
-
+                    IRCModule module = getIrc();
+                    if (!module.isActive() || module.ircClient == null) {
+                        error("IRC not active!");
                         return SINGLE_SUCCESS;
-                    }))
-                ));
+                    }
+                    module.ircClient.sendPacket(new PrivateMessageC2SPacket(target, message));
+
+                    return SINGLE_SUCCESS;
+                }))
+            ));
 
         builder.then(literal("list").executes(context -> {
             IRCModule module = getIrc();

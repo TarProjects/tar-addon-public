@@ -388,7 +388,7 @@ public class SlowExp extends TarModule {
         int count = 0; // colliding players
 
         double size = boxSize.get();
-        Vec3d orbPos = mc.player.getEntityPos().add(0,size,0);
+        Vec3d orbPos = mc.player.getEntityPos().add(0, size, 0);
         Box orbBox = new Box(
             orbPos.x - size,
             orbPos.y - size,
@@ -445,5 +445,6 @@ public class SlowExp extends TarModule {
         Custom
     }
 
-    private record State(int cycle, int count) {}
+    private record State(int cycle, int count) {
+    }
 }

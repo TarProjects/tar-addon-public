@@ -13,8 +13,8 @@ import org.tarclient.addon.TarAddon;
 import org.tarclient.addon.TarModule;
 
 /**
- * @concept hekt
  * @author nullable
+ * @concept hekt
  */
 public class TickShift extends TarModule {
     private final SettingGroup sgGeneral = this.settings.getDefaultGroup();

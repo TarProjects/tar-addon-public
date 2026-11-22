@@ -4,7 +4,6 @@ import meteordevelopment.meteorclient.events.packets.PacketEvent;
 import meteordevelopment.meteorclient.settings.EnumSetting;
 import meteordevelopment.meteorclient.settings.Setting;
 import meteordevelopment.meteorclient.settings.SettingGroup;
-import meteordevelopment.meteorclient.systems.modules.Category;
 import meteordevelopment.orbit.EventHandler;
 import net.minecraft.block.BlockState;
 import net.minecraft.util.math.BlockPos;
@@ -13,7 +12,7 @@ import org.tarclient.addon.TarModule;
 import org.tarclient.addon.modules.disabler.DisablerMode;
 import org.tarclient.addon.modules.disabler.GrimAirPlaceRotationDisabler;
 
-public class Disabler  extends TarModule {
+public class Disabler extends TarModule {
     private final SettingGroup sgGeneral = settings.getDefaultGroup();
 
     private final Setting<Mode> mode = sgGeneral.add(new EnumSetting.Builder<Mode>()

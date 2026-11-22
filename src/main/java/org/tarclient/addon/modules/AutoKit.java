@@ -7,7 +7,6 @@ import meteordevelopment.meteorclient.mixininterface.IVec3d;
 import meteordevelopment.meteorclient.settings.*;
 import meteordevelopment.meteorclient.utils.player.InvUtils;
 import meteordevelopment.orbit.EventHandler;
-import net.fabricmc.loader.impl.lib.sat4j.specs.IVec;
 import net.minecraft.component.DataComponentTypes;
 import net.minecraft.component.type.PotionContentsComponent;
 import net.minecraft.entity.LivingEntity;
@@ -19,9 +18,7 @@ import net.minecraft.item.SplashPotionItem;
 import net.minecraft.network.packet.c2s.play.ClientStatusC2SPacket;
 import net.minecraft.network.packet.c2s.play.PlayerInteractItemC2SPacket;
 import net.minecraft.util.Hand;
-import net.minecraft.util.math.Direction;
 import net.minecraft.util.math.Vec3d;
-import net.minecraft.util.shape.VoxelShape;
 import org.tarclient.addon.TarAddon;
 import org.tarclient.addon.TarModule;
 
@@ -178,7 +175,8 @@ public class AutoKit extends TarModule {
 
     @EventHandler
     private void onTick(TickEvent.Pre event) {
-        if (mc.player == null || mc.world == null || mc.getNetworkHandler() == null || mc.interactionManager == null) return;
+        if (mc.player == null || mc.world == null || mc.getNetworkHandler() == null || mc.interactionManager == null)
+            return;
         if (mc.getNetworkHandler().getServerInfo() == null) return;
 
         String world = mc.world.getRegistryKey().getValue().getPath();

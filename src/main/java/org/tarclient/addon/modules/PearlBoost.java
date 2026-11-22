@@ -1,7 +1,10 @@
 package org.tarclient.addon.modules;
 
 import meteordevelopment.meteorclient.events.packets.PacketEvent;
-import meteordevelopment.meteorclient.settings.*;
+import meteordevelopment.meteorclient.settings.BoolSetting;
+import meteordevelopment.meteorclient.settings.DoubleSetting;
+import meteordevelopment.meteorclient.settings.Setting;
+import meteordevelopment.meteorclient.settings.SettingGroup;
 import meteordevelopment.orbit.EventHandler;
 import net.minecraft.client.world.ClientWorld;
 import net.minecraft.entity.player.PlayerEntity;
@@ -9,7 +12,7 @@ import net.minecraft.item.Items;
 import net.minecraft.network.packet.c2s.play.PlayerActionC2SPacket;
 import net.minecraft.network.packet.c2s.play.PlayerInteractItemC2SPacket;
 import net.minecraft.network.packet.c2s.play.PlayerMoveC2SPacket;
-import net.minecraft.util.math.*;
+import net.minecraft.util.math.Vec3d;
 import org.tarclient.addon.TarAddon;
 import org.tarclient.addon.TarModule;
 import org.tarclient.addon.utils.BurrowUtils;
@@ -69,7 +72,7 @@ public class PearlBoost extends TarModule {
         Vec3d clipPos = TarPlayerUtils.findStepPosition(player, world, stepHeight.get());
         if (clipPos == null) return false;
 
-        sendPacket(new PlayerMoveC2SPacket.Full(clipPos, yaw, pitch,false, player.horizontalCollision));
+        sendPacket(new PlayerMoveC2SPacket.Full(clipPos, yaw, pitch, false, player.horizontalCollision));
         return true;
     }
 }

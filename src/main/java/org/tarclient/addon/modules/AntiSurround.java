@@ -9,7 +9,10 @@ import meteordevelopment.meteorclient.systems.friends.Friends;
 import meteordevelopment.meteorclient.utils.Utils;
 import meteordevelopment.meteorclient.utils.entity.DamageUtils;
 import meteordevelopment.meteorclient.utils.entity.TargetUtils;
-import meteordevelopment.meteorclient.utils.player.*;
+import meteordevelopment.meteorclient.utils.player.FindItemResult;
+import meteordevelopment.meteorclient.utils.player.InvUtils;
+import meteordevelopment.meteorclient.utils.player.PlayerUtils;
+import meteordevelopment.meteorclient.utils.player.Rotations;
 import meteordevelopment.meteorclient.utils.render.color.Color;
 import meteordevelopment.meteorclient.utils.render.color.SettingColor;
 import meteordevelopment.meteorclient.utils.world.BlockUtils;
@@ -34,9 +37,13 @@ import org.tarclient.addon.events.SpeedmineHardnessMultiplierEvent;
 import org.tarclient.addon.utils.ItemExplosionCalculator;
 import org.tarclient.addon.utils.MioUtils;
 
-import java.util.*;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
 
-import static org.tarclient.addon.utils.MiningUtils.*;
+import static org.tarclient.addon.utils.MiningUtils.getBreakingBlockPos;
+import static org.tarclient.addon.utils.MiningUtils.getBreakingProgress;
 
 public class AntiSurround extends TarModule {
     private final SettingGroup sgGeneral = this.settings.getDefaultGroup();
@@ -390,8 +397,10 @@ public class AntiSurround extends TarModule {
         if (mc.player == null || mc.world == null) return null;
 
         List<EndCrystalEntity> destroyingCrystals = mc.world.getEntitiesByClass(EndCrystalEntity.class, new Box(broken).expand(8), (endCrystalEntity -> {
-            if (mc.player.getEyePos().squaredDistanceTo(endCrystalEntity.getEntityPos()) > blockRange.get() * blockRange.get()) return false;
-            if (!ItemExplosionCalculator.willCrystalDestroyItem(endCrystalEntity.getEntityPos(), broken.toCenterPos())) return false;
+            if (mc.player.getEyePos().squaredDistanceTo(endCrystalEntity.getEntityPos()) > blockRange.get() * blockRange.get())
+                return false;
+            if (!ItemExplosionCalculator.willCrystalDestroyItem(endCrystalEntity.getEntityPos(), broken.toCenterPos()))
+                return false;
             return DamageUtils.crystalDamage(mc.player, endCrystalEntity.getEntityPos()) < crystalMaxSelfDamage.get();
         }));
 
@@ -515,7 +524,8 @@ public class AntiSurround extends TarModule {
                     BlockPos basePos = centerPos.add(dx, dy, dz);
                     if (basePos.equals(centerPos.down())) continue;
 
-                    if (mc.player.getEyePos().squaredDistanceTo(basePos.toCenterPos()) > blockRange.get() * blockRange.get()) continue;
+                    if (mc.player.getEyePos().squaredDistanceTo(basePos.toCenterPos()) > blockRange.get() * blockRange.get())
+                        continue;
 
                     if (!isValidCrystalPos(basePos) || !canCrystal(basePos)) continue;
 
@@ -594,7 +604,8 @@ public class AntiSurround extends TarModule {
     private Target isValidSurroundPos(BlockPos pos) {
         if (mc.world == null || mc.player == null) return null;
 
-        if (mc.player.getEyePos().squaredDistanceTo(pos.toCenterPos()) > targetRange.get() * targetRange.get()) return null;
+        if (mc.player.getEyePos().squaredDistanceTo(pos.toCenterPos()) > targetRange.get() * targetRange.get())
+            return null;
 
         for (PlayerEntity player : mc.world.getPlayers()) {
             if (TargetUtils.isBadTarget(player, targetRange.get()) || !Friends.get().shouldAttack(player)) continue;
@@ -649,5 +660,6 @@ public class AntiSurround extends TarModule {
         entity.setRemoved(Entity.RemovalReason.KILLED);
     }
 
-    public record Target(Direction direction, PlayerEntity player) {}
+    public record Target(Direction direction, PlayerEntity player) {
+    }
 }

@@ -34,8 +34,10 @@ import org.tarclient.addon.TarModule;
 import org.tarclient.addon.events.SendTypedMessageEvent;
 import org.tarclient.addon.utils.*;
 
-
-import java.util.*;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -306,7 +308,7 @@ public class IRCModule extends TarModule {
             // horiz distance
             double dist = mc.player.getEntityPos().squaredDistanceTo(blockPos.getX(), mc.player.getY(), blockPos.getZ());
 
-            if (dist > minDistance.get()*minDistance.get() && dist < maxDistance.get()*maxDistance.get()) {
+            if (dist > minDistance.get() * minDistance.get() && dist < maxDistance.get() * maxDistance.get()) {
                 Vector3d pos = new Vector3d(blockPos.getX(), blockPos.getY(), blockPos.getZ());
                 pos.add(0, 1.5, 0);
 
@@ -404,6 +406,7 @@ public class IRCModule extends TarModule {
 
     private class IRCEventHandler implements IRCClientEventHandler {
         IRCModule module;
+
         public IRCEventHandler(IRCModule module) {
             this.module = module;
         }
@@ -541,6 +544,9 @@ public class IRCModule extends TarModule {
         }
     }
 
-    public record Breaking(BlockPos blockPos, float progress){}
-    public record PlayerData(BlockPos pos, Float health){}
+    public record Breaking(BlockPos blockPos, float progress) {
+    }
+
+    public record PlayerData(BlockPos pos, Float health) {
+    }
 }

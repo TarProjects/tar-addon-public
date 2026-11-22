@@ -18,6 +18,7 @@
   "mixins": [
     "tar-addon.mixins.json"
   ],
+  "accessWidener": "tar-addon.accesswidener",
   "custom": {
     "meteor-client:color": "225,25,25"
   },

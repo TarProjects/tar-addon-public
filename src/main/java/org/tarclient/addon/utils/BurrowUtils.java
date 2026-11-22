@@ -61,6 +61,31 @@ public class BurrowUtils {
     }
 
     public static boolean isPlayerPhased(PlayerEntity player) {
+        return isPlayerPhased(player, 1e-7);
+    }
+
+
+    public static boolean isPlayerPhased(PlayerEntity player, double shrink) {
+        Box playerBox = player.getBoundingBox();
+        return isPlayerPhased(player, playerBox, shrink);
+    }
+
+    public static boolean isPlayerPhased(PlayerEntity player, Box box, double shrink) {
+        World world = player.getEntityWorld();
+        if (world == null) return false;
+
+        ShapeContext context = ShapeContext.of(player);
+
+        return BlockPos.stream(box).anyMatch(pos -> {
+            BlockState state = world.getBlockState(pos);
+            if (state.isAir()) return false;
+
+            VoxelShape shape = state.getCollisionShape(world, pos, context);
+            return !shape.isEmpty() && shape.getBoundingBox().offset(pos).intersects(box.expand(-shrink));
+        });
+    }
+
+    public static boolean isPlayerFullyPhased(PlayerEntity player) {
         World world = player.getEntityWorld();
         if (world == null) return false;
 

@@ -12,6 +12,9 @@ public interface LivingEntityAccessor {
 
     @Accessor("jumpingCooldown")
     void tar$setJumpCooldown(int cooldown);
+
+    @Accessor("ticksSinceLastAttack")
+    int tar$getTicksSinceLastAttack();
 }
 
 

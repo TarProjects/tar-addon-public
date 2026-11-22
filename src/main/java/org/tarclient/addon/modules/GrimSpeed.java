@@ -16,8 +16,6 @@ import org.tarclient.addon.TarModule;
 import org.tarclient.addon.events.MovementRotationEvent;
 import org.tarclient.addon.mixin.LivingEntityAccessor;
 import org.tarclient.addon.utils.BurrowUtils;
-import org.tarclient.addon.utils.PredictUtils;
-import org.tarclient.addon.utils.SimulationState;
 
 public class GrimSpeed extends TarModule {
     private final SettingGroup sgGeneral = this.settings.getDefaultGroup();
@@ -30,19 +28,11 @@ public class GrimSpeed extends TarModule {
         .build()
     );
 
-    private final Setting<Boolean> constant = sgGeneral.add(new BoolSetting.Builder()
-        .name("constant")
-        .description("Constantly boosts you")
-        .defaultValue(true)
-        .build()
-    );
-
     private final Setting<Integer> ticks = sgGeneral.add(new IntSetting.Builder()
         .name("ticks")
-        .description("Ticks to manipulate before landing")
+        .description("Start manipulating after jumping within N ticks")
         .defaultValue(3)
-        .sliderRange(0, 20)
-        .visible(() -> !constant.get())
+        .sliderRange(0, 40)
         .build()
     );
 
@@ -64,16 +54,16 @@ public class GrimSpeed extends TarModule {
         .build()
     );
 
-    private final Setting<Double> startGlidingRotation = sgGeneral.add(new DoubleSetting.Builder()
-        .name("start-gliding-rotation")
-        .description("Rotation when starting to glide")
+    private final Setting<Double> groundRotation = sgGeneral.add(new DoubleSetting.Builder()
+        .name("ground-rotation")
+        .description("Rotation when about to hit ground")
         .defaultValue(45)
         .range(-90, 90)
         .sliderRange(-90, 90)
         .build()
     );
 
-    private boolean boosting;
+    private int airTicks = 0;
     private double rotation;
     private int cooldown;
 
@@ -83,14 +73,15 @@ public class GrimSpeed extends TarModule {
 
     @Override
     public void onActivate() {
-        boosting = false;
+        airTicks = 0;
         rotation = 0;
         cooldown = 0;
     }
 
     @EventHandler
     private void onMovementRotationEvent(MovementRotationEvent event) {
-        if (!boosting) return;
+        if (mc.player == null) return;
+        if (airTicks < ticks.get() || mc.player.isOnGround()) return;
         event.pitch = (float) rotation;
     }
 
@@ -98,14 +89,17 @@ public class GrimSpeed extends TarModule {
     private void onTick(TickEvent.Pre event) {
         if (mc.player == null) return;
 
-        if (mc.player.isOnGround() || BurrowUtils.isPlayerPhased(mc.player)) {
-            boosting = false;
+        if (cooldown > 0) {
+            airTicks = 0;
+            cooldown--;
             return;
         }
 
-        if (cooldown > 0) {
-            cooldown--;
+        if (mc.player.isOnGround() || BurrowUtils.isPlayerPhased(mc.player)) {
+            airTicks = 0;
             return;
+        } else if (!mc.player.isOnGround()) {
+            airTicks++;
         }
 
         FindItemResult elytra = InvUtils.find(Items.ELYTRA);
@@ -118,42 +112,26 @@ public class GrimSpeed extends TarModule {
         // jump cd just incase
         ((LivingEntityAccessor) mc.player).tar$setJumpCooldown(0);
 
-        // boost anyways from here
-        if (constant.get()) boosting = true;
-
-        // should we start boosting? boost until ground / skip on constat
-        if (!boosting) {
-            SimulationState state = new SimulationState(mc.player.getEntityPos(), mc.player.getVelocity());
-            double lastY = state.pos.y;
-            for (int i = 0; i < ticks.get(); i++) {
-                PredictUtils.advanceOneTick(mc.player, state, 0);
-                if (Math.abs(lastY - state.pos.y) < 1e-5) {
-                    boosting = true;
-                    break;
-                }
-                lastY = state.pos.getY();
-            }
-        }
-
-        if (boosting) {
-            if (mc.player.isGliding()) {
-                Rotations.rotate(mc.player.getYaw(), glidingRotation.get());
-                rotation = glidingRotation.get();
-            } else {
+        if (airTicks >= ticks.get()) {
+            if (!mc.player.isGliding()) {
                 // NOTE: optimal clicking saves 2 swaps
                 InvUtils.click().slot(elytra.slot());
                 InvUtils.click().slotArmor(2);
 
+                mc.player.startGliding();
                 for (int i = 0; i < glidePackets.get(); i++) {
                     sendPacket(new ClientCommandC2SPacket(mc.player, ClientCommandC2SPacket.Mode.START_FALL_FLYING));
                 }
 
-                mc.player.startGliding();
                 InvUtils.click().slotArmor(2);
                 InvUtils.click().slot(elytra.slot());
-
-                Rotations.rotate(mc.player.getYaw(), startGlidingRotation.get());
-                rotation = startGlidingRotation.get();
+            }
+            if (mc.player.fallDistance > 0.9) {
+                Rotations.rotate(mc.player.getYaw(), groundRotation.get());
+                rotation = groundRotation.get();
+            } else {
+                Rotations.rotate(mc.player.getYaw(), glidingRotation.get());
+                rotation = glidingRotation.get();
             }
         }
     }
@@ -167,7 +145,7 @@ public class GrimSpeed extends TarModule {
     @EventHandler
     private void onPacketReceive(PacketEvent.Receive event) {
         if (event.packet instanceof PlayerPositionLookS2CPacket) {
-            boosting = false;
+            airTicks = 0;
             cooldown = lagCooldown.get();
         }
     }

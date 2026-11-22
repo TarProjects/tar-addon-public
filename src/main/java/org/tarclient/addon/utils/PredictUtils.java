@@ -23,10 +23,14 @@ public class PredictUtils {
     public static final double DRAG = 0.98;
     private static final List<VoxelShape> EMPTY_SHAPE_LIST = List.of();
 
-    public static void advanceOneTick(PlayerEntity player, SimulationState state, double stepHeight) {
-        Vec3d vel = state.vel.add(0, -GRAVITY, 0);
+    public static void advanceOneTick(Entity entity, SimulationState state, double stepHeight) {
+        advanceOneTick(entity, state, stepHeight, false);
+    }
 
-        Vec3d newPos = simulateTick(player, state.pos, vel, stepHeight);
+    public static void advanceOneTick(Entity entity, SimulationState state, double stepHeight, boolean gliding) {
+        Vec3d vel = !gliding ? state.vel.add(0, -GRAVITY, 0) : state.vel;
+
+        Vec3d newPos = simulateTick(entity, state.pos, vel, stepHeight);
         Vec3d adjusted = newPos.subtract(state.pos);
 
         boolean collidedX = Math.abs(adjusted.x - vel.x) > 1e-6;
@@ -39,7 +43,7 @@ public class PredictUtils {
             collidedZ ? 0 : vel.z
         );
 
-        state.vel = new Vec3d(vel.x, vel.y * DRAG, vel.z);
+        if (!gliding) state.vel = new Vec3d(vel.x, vel.y * DRAG, vel.z);
         state.pos = newPos;
     }
 
@@ -80,11 +84,11 @@ public class PredictUtils {
         return positions;
     }
 
-    private static Vec3d simulateTick(PlayerEntity player, Vec3d pos, Vec3d velocity, double stepHeight) {
-        World world = player.getEntityWorld();
+    private static Vec3d simulateTick(Entity entity, Vec3d pos, Vec3d velocity, double stepHeight) {
+        World world = entity.getEntityWorld();
 
-        Box box = player.getBoundingBox().offset(pos.subtract(player.getEntityPos()));
-        Vec3d adjusted = Entity.adjustMovementForCollisions(player, velocity, box, world, EMPTY_SHAPE_LIST);
+        Box box = entity.getBoundingBox().offset(pos.subtract(entity.getEntityPos()));
+        Vec3d adjusted = Entity.adjustMovementForCollisions(entity, velocity, box, world, EMPTY_SHAPE_LIST);
 
         boolean horizontalBlocked = Math.abs(adjusted.x - velocity.x) > 1e-6 || Math.abs(adjusted.z - velocity.z) > 1e-6;
         boolean verticalBlocked = Math.abs(adjusted.y - velocity.y) > 1e-6;
@@ -93,7 +97,7 @@ public class PredictUtils {
         if (stepHeight > 0 && onGround && horizontalBlocked) {
             Box groundBox = box.offset(0, adjusted.y, 0);
             Box stepBox = groundBox.stretch(velocity.x, stepHeight, velocity.z);
-            List<VoxelShape> collisions = Entity.findCollisions(player, world, stepBox);
+            List<VoxelShape> collisions = Entity.findCollisions(entity, world, stepBox);
 
             if (collisions.isEmpty()) {
                 return pos.add(adjusted);
@@ -104,7 +108,7 @@ public class PredictUtils {
 
             for (float yOffset : stepHeights) {
                 Vec3d stepMovement = new Vec3d(velocity.x, yOffset, velocity.z);
-                Vec3d stepAdjusted = Entity.adjustMovementForCollisions(player, stepMovement, groundBox, world, collisions);
+                Vec3d stepAdjusted = Entity.adjustMovementForCollisions(entity, stepMovement, groundBox, world, collisions);
 
                 if (stepAdjusted.horizontalLengthSquared() > bestStep.horizontalLengthSquared()) {
                     bestStep = stepAdjusted.add(0, adjusted.y, 0);

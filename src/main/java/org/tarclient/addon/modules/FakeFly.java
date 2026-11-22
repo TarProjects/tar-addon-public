@@ -44,6 +44,14 @@ public class FakeFly extends TarModule {
         .build()
     );
 
+    private final Setting<Integer> glidePackets = sgGeneral.add(new IntSetting.Builder()
+        .name("glide-packets")
+        .description("How many start gliding packets to send")
+        .defaultValue(1)
+        .min(1)
+        .sliderRange(1, 20)
+        .build()
+    );
 
     private final Setting<Boolean> boost = sgGeneral.add(new BoolSetting.Builder()
         .name("boost")
@@ -60,7 +68,6 @@ public class FakeFly extends TarModule {
         .build()
     );
 
-
     private final Setting<Integer> rocketLag = sgGeneral.add(new IntSetting.Builder()
         .name("rocket-lag")
         .description("Max lag in ticks for rocket to attach to you")
@@ -69,7 +76,6 @@ public class FakeFly extends TarModule {
         .visible(boost::get)
         .build()
     );
-
 
     private final Setting<Double> speedBps = sgGeneral.add(new DoubleSetting.Builder()
         .name("speed-bps")
@@ -143,7 +149,7 @@ public class FakeFly extends TarModule {
                 // already reset, count backwards (hacky but works)
                 lastFirework--;
             } else {
-                lastFirework -= (ticks - cooldown.get());
+                lastFirework -= cooldown.get();
                 ticks = -cooldown.get();
             }
             return;
@@ -152,8 +158,12 @@ public class FakeFly extends TarModule {
         // cooldown
         if (!mc.player.isGliding()) {
             InvUtils.move().from(elytra.slot()).toArmor(2);
-            sendPacket(new ClientCommandC2SPacket(mc.player, ClientCommandC2SPacket.Mode.START_FALL_FLYING));
+
             mc.player.startGliding();
+            for (int i = 0; i < glidePackets.get(); i++) {
+                sendPacket(new ClientCommandC2SPacket(mc.player, ClientCommandC2SPacket.Mode.START_FALL_FLYING));
+            }
+
             InvUtils.move().fromArmor(2).to(elytra.slot());
             if (shouldUseFirework()) useFirework(firework);
         }

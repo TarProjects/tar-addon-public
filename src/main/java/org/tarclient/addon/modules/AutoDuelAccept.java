@@ -3,10 +3,7 @@ package org.tarclient.addon.modules;
 import meteordevelopment.meteorclient.events.game.ReceiveMessageEvent;
 import meteordevelopment.meteorclient.events.packets.PacketEvent;
 import meteordevelopment.meteorclient.events.world.TickEvent;
-import meteordevelopment.meteorclient.settings.BoolSetting;
-import meteordevelopment.meteorclient.settings.Setting;
-import meteordevelopment.meteorclient.settings.SettingGroup;
-import meteordevelopment.meteorclient.settings.StringListSetting;
+import meteordevelopment.meteorclient.settings.*;
 import meteordevelopment.meteorclient.utils.player.FindItemResult;
 import meteordevelopment.meteorclient.utils.player.InvUtils;
 import meteordevelopment.orbit.EventHandler;
@@ -27,6 +24,13 @@ import java.util.regex.Pattern;
 public class AutoDuelAccept extends TarModule {
     private final SettingGroup sgGeneral = this.settings.getDefaultGroup();
 
+    private final Setting<String> regex = sgGeneral.add(new StringSetting.Builder()
+        .name("regex")
+        .description("Regex for detecting duels. Group 1 is the person who sends you the duel!")
+        .defaultValue("^Duel request received from ([a-zA-Z0-9_]+).")
+        .build()
+    );
+
     private final Setting<List<String>> usernames = sgGeneral.add(new StringListSetting.Builder()
         .name("usernames")
         .description("People who to automatically accept duels from")
@@ -41,7 +45,6 @@ public class AutoDuelAccept extends TarModule {
         .build()
     );
 
-    private static final Pattern duelRegex = Pattern.compile("^Duel request received from ([a-zA-Z0-9_]+).");
     private static final Pattern whisperRegex = Pattern.compile("^(\\w+) says: ([\\w!]+)");
     private String threw = null;
     private int sendInNTicks;
@@ -81,10 +84,9 @@ public class AutoDuelAccept extends TarModule {
         String message = event.getMessage().getString();
 
         // Matches for duel start
-        Matcher duelMatcher = duelRegex.matcher(message);
+        Matcher duelMatcher = Pattern.compile(regex.get()).matcher(message);
 
-
-        if (duelMatcher.find()) {
+        if (duelMatcher.find() && duelMatcher.groupCount() >= 1) {
             String username = duelMatcher.group(1);
             if (usernames.get().contains(username)) {
                 mc.getNetworkHandler().sendChatCommand("duel accept " + username);

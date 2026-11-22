@@ -8,12 +8,15 @@
   "mixins": [
     "AbstractBlockStateMixin",
     "ArmorSlotMixin",
+    "BookBotMixin",
     "EntityMixin",
     "FireworkRocketEntityAccessor",
     "GuiThemesMixin",
     "ItemStackMixin",
     "LivingEntityAccessor",
     "LivingEntityMixin",
+    "PlayerEntityMixin",
+    "PlayerInteractEntityC2SPacketAccessor",
     "PlayerInventoryMixin",
     "RotationsMixin",
     "SettingCommandMixin",
@@ -22,6 +25,8 @@
   "client": [
     "CameraMixin",
     "ChatScreenMixin",
+    "ClientPlayerEntityMixin",
+    "ClientPlayerInteractionManagerAccessor",
     "ClientPlayerInteractionManagerMixin",
     "ClientPlayNetworkHandlerFixMixin",
     "ElementMixin",
@@ -33,6 +38,7 @@
     "KeyboardInputMixin",
     "MinecraftClientMixin",
     "MouseMixin",
+    "PlayerEntityRendererMixin",
     "PlayerListHudAccessor",
     "ScreenMixin"
   ]

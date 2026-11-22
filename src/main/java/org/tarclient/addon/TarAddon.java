@@ -2,7 +2,6 @@ package org.tarclient.addon;
 
 import meteordevelopment.meteorclient.addons.GithubRepo;
 import meteordevelopment.meteorclient.addons.MeteorAddon;
-import meteordevelopment.meteorclient.commands.Command;
 import meteordevelopment.meteorclient.commands.Commands;
 import meteordevelopment.meteorclient.systems.modules.Category;
 import meteordevelopment.meteorclient.systems.modules.Modules;
@@ -72,10 +71,13 @@ public class TarAddon extends MeteorAddon {
         Modules.get().add(new ArenaReset());
         Modules.get().add(new AutoCEV());
         Modules.get().add(new AutoDuelAccept());
+        Modules.get().add(new AutoDupe());
         Modules.get().add(new AutoEnderChest());
         Modules.get().add(new AutoEZ());
         Modules.get().add(new AutoKit());
+        Modules.get().add(new AutoReply());
         Modules.get().add(new AutoSpectator());
+        Modules.get().add(new BedrockBreaker());
         Modules.get().add(new BetterRichPresence());
         Modules.get().add(new BlinkESP());
         Modules.get().add(new BlinkTrap());
@@ -89,10 +91,12 @@ public class TarAddon extends MeteorAddon {
         Modules.get().add(new Crasher());
         Modules.get().add(new CrawlESP());
         Modules.get().add(new CrystalWaster());
+        Modules.get().add(new Disabler());
         Modules.get().add(new DropKit());
         Modules.get().add(new FakeFly());
         Modules.get().add(new Flattener());
         Modules.get().add(new GridFiller());
+        Modules.get().add(new GrimPhaseFix());
         Modules.get().add(new GrimSpeed());
         Modules.get().add(new HeadBurrow());
         Modules.get().add(new IAmAFailure());
@@ -101,7 +105,9 @@ public class TarAddon extends MeteorAddon {
         Modules.get().add(new InventoryFixes());
         Modules.get().add(new IRCModule());
         Modules.get().add(new ItemUse());
+        Modules.get().add(new KillAuraPlus());
         Modules.get().add(new KitDeleter());
+        Modules.get().add(new MacePlus());
         Modules.get().add(new MioCompatibility());
         Modules.get().add(new ModifyESP());
         Modules.get().add(new NCPSpeed());

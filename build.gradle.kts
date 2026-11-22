@@ -45,6 +45,10 @@ dependencies {
     compileOnly(libs.baritone)
 }
 
+loom {
+    accessWidenerPath = file("src/main/resources/tar-addon.accesswidener")
+}
+
 tasks.shadowJar {
     configurations = listOf(project.configurations["shadowOnly"])
     archiveClassifier.set("unmapped")
